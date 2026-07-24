@@ -1,0 +1,25 @@
+.DS_Store
+node_modules/
+.env
+*.log
+
+# Sauvegardes locales — données sensibles, ne jamais committer
+backups/
+
+# Script de sauvegarde locale (tourne sur le PC, pas sur Netlify)
+backup_local.py
+
+# Configuration launchd macOS (spécifique à la machine)
+*.plist
+
+# SQL de setup Supabase (structure interne, ne pas publier)
+supabase-setup.sql
+
+# Documentation interne
+ARCHITECTURE_REPORT.md
+claude.md
+
+# Applications macOS de lancement local
+Lancer PharmaShield.app/
+Arreter PharmaShield.app/
+*.app/

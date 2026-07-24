@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MétroGest — Gestion Métrologique PCS07</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#F7F8FA;color:#1a1a2e}
+input,select,textarea,button{font-family:inherit}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-box{background:#fff;border-radius:14px;padding:28px;width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:11px;text-transform:uppercase;color:#888;font-weight:700;letter-spacing:0.04em}
+.form-group input,.form-group select{padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none;transition:border 0.15s}
+.form-group input:focus,.form-group select:focus{border-color:#1B4965}
+.btn{padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1B4965;color:#fff}.btn-primary:hover{background:#0D2137}
+.btn-success{background:#4CAF50;color:#fff}.btn-success:hover{background:#388E3C}
+.btn-danger{background:#F44336;color:#fff}.btn-danger:hover{background:#C62828}
+.btn-secondary{background:#E8EBF0;color:#555}.btn-secondary:hover{background:#ddd}
+.btn-icon{width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:1px solid #ddd;background:#fff;cursor:pointer;transition:all 0.15s}
+.btn-icon:hover{background:#EEF4FF;border-color:#1B4965}
+.btn-icon.danger:hover{background:#FFEBEE;border-color:#F44336}
+.toast{position:fixed;bottom:24px;right:24px;background:#1B4965;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:2000;box-shadow:0 4px 12px rgba(0,0,0,0.2);animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+var e = React.createElement;
+var useState = React.useState;
+var useMemo = React.useMemo;
+var useEffect = React.useEffect;
+var useCallback = React.useCallback;
+var useRef = React.useRef;
+
+// ─── DEFAULT DATA ───────────────────────────────────────────────────────
+var DEFAULT_ENREGISTREURS = [
+  { code:"EAEI1", serie:"44645006", emplacement:"Chambre Froide", type:"Température/Humidité", plage:"02-08°C / 15-25°C / 50-70% / 70-90%", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"EBEI1", serie:"44645035", emplacement:"Chambre Froide", type:"Température/Humidité", plage:"02-08°C / 15-25°C / 50-70% / 70-90%", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E21B", serie:"44644704", emplacement:"2ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E22B", serie:"44644808", emplacement:"2ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E23B", serie:"44645041", emplacement:"2ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E01B", serie:"44644806", emplacement:"RDC", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E02B", serie:"44644809", emplacement:"RDC", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E03B", serie:"44644807", emplacement:"RDC", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E04B", serie:"44644992", emplacement:"RDC", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E05B", serie:"44644811", emplacement:"Officine", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E11B", serie:"44668267", emplacement:"3ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E12B", serie:"44668263", emplacement:"3ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E13B", serie:"44668255", emplacement:"3ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E41B", serie:"44672357", emplacement:"4ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E42B", serie:"44668256", emplacement:"4ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E43B", serie:"44669221", emplacement:"4ème étage", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"ET1B", serie:"44669235", emplacement:"Secteur Vaccin", type:"Température", plage:"02-08°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"ET2B", serie:"44672529", emplacement:"1er étage", type:"Température", plage:"02-08°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"ET3B", serie:"44672530", emplacement:"Salle Informatique", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"ET6B", serie:"44668264", emplacement:"Secteur Vaccin", type:"Température", plage:"02-08°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"B", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"Actif" },
+  { code:"E01", serie:"37622128/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C / 15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E02", serie:"37622107/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C / 15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E03", serie:"37622115/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C / 15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E04", serie:"37622111/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C / 15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E05", serie:"37622121/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C / 15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E11", serie:"37622102/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E12", serie:"37580503/705", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E21", serie:"62155030", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E22", serie:"62154739", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E23", serie:"62155026", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E34", serie:"—", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"E41", serie:"37621565/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"ET1", serie:"37603550/807", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"ET5", serie:"37622103/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"ET6", serie:"37622108/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"02-08°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"ET8", serie:"37622113/906", emplacement:"Service Qualité (stock)", type:"Température", plage:"15-25°C", dernierEtal:"2025-10-15", prochainEtal:"2026-10-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH04", serie:"EF7207003080", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-12-15", prochainEtal:"2026-12-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH06", serie:"EF7207003002", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-12-15", prochainEtal:"2026-12-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH09", serie:"EF7207003057", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-12-15", prochainEtal:"2026-12-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH10", serie:"EF7207003003", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-12-15", prochainEtal:"2026-12-15", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH11", serie:"EF7204001081", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-06-01", prochainEtal:"2026-06-01", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH12", serie:"EF7204001028", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-06-01", prochainEtal:"2026-06-01", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" },
+  { code:"TH13", serie:"EF7204001026", emplacement:"Service Qualité (stock)", type:"Température/Humidité", plage:"02-08°C / 15-25°C", dernierEtal:"2025-06-01", prochainEtal:"2026-06-01", categorie:"A", tolerance:"± 0,1 °C", prestataire:"", certificat:"", resultat:"", statutEquip:"En stock" }
+];
+
+var DEFAULT_EI = [
+  { code:"EI-1", type:"Chambre froide", designation:"Chambre Froide EI 1", plage:"02-08°C / 70-90%", derniereValid:"2025-08-15", prochaineValid:"2026-02-15", dateEffective:"2026-02-15", groupes:["EI 1G1","EI 1G2"], prochaineMaintGrp:"Août 2026" },
+  { code:"EI-2", type:"Chambre froide", designation:"Chambre Froide EI 2", plage:"02-08°C / 70-90%", derniereValid:"2025-08-12", prochaineValid:"2026-02-15", dateEffective:"2026-02-15", groupes:["EI 2G1","EI 2G2"], prochaineMaintGrp:"Août 2026" },
+  { code:"CF-01", type:"Véhicule frigorifique", designation:"Camionnette Frigorifique 43569 A 10", plage:"02-08°C / 70-90%", derniereValid:"2025-07-16", prochaineValid:"2026-07-16", dateEffective:"—", groupes:["Groupe froid embarqué"], prochaineMaintGrp:"—" },
+  { code:"CARTO", type:"Cartographie", designation:"Cartographie des magasins", plage:"15-25°C / 50-70%", derniereValid:"2025-08-11", prochaineValid:"2026-02-20", dateEffective:"2026-02-20", groupes:["Magasin 1","Magasin 2","Magasin 3","Magasin 4","Magasin 5","Magasin 6"], prochaineMaintGrp:"Août 2026" }
+];
+
+var DEFAULT_MAINT = [
+  { equipement:"Chambre Froide EI 1", groupes:["EI 1G1","EI 1G2"] },
+  { equipement:"Chambre Froide EI 2", groupes:["EI 2G1","EI 2G2"] },
+  { equipement:"Camionnette Frigorifique 43569 A 10", groupes:["Groupe froid embarqué"] },
+  { equipement:"Cartographie des magasins", groupes:["Magasin 1","Magasin 2","Magasin 3","Magasin 4","Magasin 5","Magasin 6"] }
+];
+
+var DEFAULT_PM = { temp_15_25:"15,3 — 18,6 — 21,1 — 23,2 — 25,2 °C", temp_02_08:"0,0 — 2,0 — 4,0 — 6,0 — 8,0 °C", humidite:"33 — 40 — 48 — 71 — 80 — 90 — 95 %" };
+var DEFAULT_TOL = "± 0,1 °C";
+
+var DEFAULT_SOCIETE = {
+  nom:"SPRL",
+  adresse:"Zone Industrielle, Casablanca, Maroc",
+  telephone:"+212 5XX-XXXXXX",
+  email:"contact@spr.ma",
+  secteur:"Distribution Pharmaceutique",
+  responsableMaintenance:"Kacem Senhaji",
+  responsableQualite:"Service Qualité",
+  dateCreation:"2010-01-01"
+};
+
+// ─── SUPABASE CONFIG ────────────────────────────────────────────────────
+// >>> REMPLACEZ CES 2 VALEURS par celles de votre projet Supabase <<<
+var SUPABASE_URL = "https://qtyhioqciyzxraonxlwk.supabase.co";
+var SUPABASE_KEY = "sb_publishable_85ZuF9aFqxzBI6l0KncHUA_GSFUyDOL";
+var SYNC_ENABLED = SUPABASE_URL && SUPABASE_KEY;
+
+// ─── STORAGE (localStorage + Supabase sync) ─────────────────────────────
+function loadData(key, fallback) {
+  try { var d = localStorage.getItem("mg_"+key); return d ? JSON.parse(d) : fallback; }
+  catch(ex) { return fallback; }
+}
+function saveData(key, data) {
+  localStorage.setItem("mg_"+key, JSON.stringify(data));
+  if(SYNC_ENABLED)cloudSave("mg_"+key,"metrologie",data);
+}
+function cloudSave(id,module,data){
+  if(!SYNC_ENABLED)return;
+  fetch(SUPABASE_URL+"/rest/v1/data_store",{
+    method:"POST",
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+    body:JSON.stringify({id:id,module:module,data:data})
+  }).then(function(r){
+    if(r.ok)window.dispatchEvent(new CustomEvent("ps_sync_ok"));
+    else window.dispatchEvent(new CustomEvent("ps_sync_error",{detail:"HTTP "+r.status}));
+  }).catch(function(){
+    window.dispatchEvent(new CustomEvent("ps_sync_error",{detail:"réseau"}));
+  });
+}
+function cloudLoadAll(callback){
+  if(!SYNC_ENABLED){callback(null);return;}
+  fetch(SUPABASE_URL+"/rest/v1/data_store?or=(module.eq.metrologie,module.eq.shared)&select=id,data,updated_at",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(rows){
+    var map={};rows.forEach(function(r){map[r.id]=r.data;});callback(map);
+  }).catch(function(){callback(null);});
+}
+var _lastSyncHash="";
+// Fusion intelligente par enregistrement : préserve les ajouts locaux, prend le plus récent en cas de conflit
+function smartMerge(local,server,keyFn){
+  if(!Array.isArray(local)||!Array.isArray(server))return server||local||[];
+  var sMap={};server.forEach(function(r){var k=keyFn(r);if(k!=null)sMap[k]=r;});
+  var lMap={};local.forEach(function(r){var k=keyFn(r);if(k!=null)lMap[k]=r;});
+  var merged=[];
+  server.forEach(function(srv){
+    var k=keyFn(srv);if(k==null){merged.push(srv);return;}
+    var loc=lMap[k];
+    if(!loc){merged.push(srv);}
+    else{var st=new Date(srv._ts||0).getTime(),lt=new Date(loc._ts||0).getTime();merged.push(lt>=st?loc:srv);}
+  });
+  local.forEach(function(loc){var k=keyFn(loc);if(k==null||!sMap[k])merged.push(loc);});
+  return merged;
+}
+function cloudPoll(setters,onUpdate){
+  if(!SYNC_ENABLED)return;
+  fetch(SUPABASE_URL+"/rest/v1/data_store?or=(module.eq.metrologie,module.eq.shared)&select=id,data,updated_at&order=updated_at.desc",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(rows){
+    // Hash basé sur le contenu (pas updated_at) — évite la boucle useEffect→cloudSave→trigger→updated_at
+    var dataStr=rows.map(function(r){return r.id+":"+JSON.stringify(r.data);}).join("|");
+    var h=0;for(var i=0;i<dataStr.length;i++){h=((h<<5)-h)+dataStr.charCodeAt(i);h|=0;}
+    var hash=h.toString(36);
+    if(hash===_lastSyncHash)return;
+    _lastSyncHash=hash;
+    var map={};rows.forEach(function(r){map[r.id]=r.data;});
+    // Fusion par enregistrement — préserve les ajouts locaux hors ligne
+    if(map.mg_enr)setters.enr(function(l){return smartMerge(l,map.mg_enr,function(r){return r.code;});});
+    if(map.mg_ei)setters.ei(function(l){return smartMerge(l,map.mg_ei,function(r){return r.code;});});
+    if(map.mg_maint)setters.maint(function(l){return smartMerge(l,map.mg_maint,function(r){return r.equipement;});});
+    if(map.mg_mc)setters.mc(map.mg_mc);
+    if(map.mg_pm)setters.pm(map.mg_pm);
+    if(map.mg_tol)setters.tol(map.mg_tol);
+    if(map.mg_maintInter)setters.maintInter(function(l){return smartMerge(l,map.mg_maintInter,function(r){return r.id;});});
+    if(map.mg_docs)setters.docs(function(l){return smartMerge(l,map.mg_docs,function(r){return r.id;});});
+    if(map.pharmashield_societe)setters.soc(map.pharmashield_societe);
+    if(onUpdate)onUpdate();
+  }).catch(function(){});
+}
+
+// ─── SAUVEGARDE JOURNALIÈRE SUPABASE ────────────────────────────────────
+// Lit directement depuis Supabase (pas de dépendance au state React)
+// Crée backup_metro_YYYY-MM-DD + backup_maint_YYYY-MM-DD — 1 fois par jour
+// Conserve 30 jours d'historique, nettoie automatiquement les anciens
+function triggerDailyBackup(notify){
+  if(!SYNC_ENABLED)return;
+  var today=new Date().toISOString().slice(0,10);
+  var metroKey="backup_metro_"+today;
+  var maintKey="backup_maint_"+today;
+  fetch(SUPABASE_URL+"/rest/v1/data_store?or=(id.eq."+metroKey+",id.eq."+maintKey+")&select=id",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(existing){
+    var done=(existing||[]).map(function(r){return r.id;});
+    if(done.indexOf(metroKey)>=0&&done.indexOf(maintKey)>=0)return; // Déjà fait aujourd'hui
+    fetch(SUPABASE_URL+"/rest/v1/data_store?or=(module.eq.metrologie,module.eq.maintenance,module.eq.shared)&select=id,module,data",{
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+    }).then(function(r){return r.json();}).then(function(rows){
+      var metro={},maint={},shared={};
+      rows.forEach(function(r){
+        if(r.module==="metrologie")metro[r.id]=r.data;
+        else if(r.module==="maintenance")maint[r.id]=r.data;
+        else if(r.module==="shared")shared[r.id]=r.data;
+      });
+      var saves=[];
+      if(done.indexOf(metroKey)<0&&Object.keys(metro).length>0)
+        saves.push(fetch(SUPABASE_URL+"/rest/v1/data_store",{method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+          body:JSON.stringify({id:metroKey,module:"backup",data:{_date:today,_module:"metrologie",content:Object.assign({},metro,shared)}})}));
+      if(done.indexOf(maintKey)<0&&Object.keys(maint).length>0)
+        saves.push(fetch(SUPABASE_URL+"/rest/v1/data_store",{method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+          body:JSON.stringify({id:maintKey,module:"backup",data:{_date:today,_module:"maintenance",content:Object.assign({},maint,shared)}})}));
+      if(!saves.length)return;
+      Promise.all(saves).then(function(){
+        // Nettoyage automatique : supprimer les backups de plus de 30 jours
+        var cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+        fetch(SUPABASE_URL+"/rest/v1/data_store?module=eq.backup&updated_at=lt."+cutoff.toISOString(),{
+          method:"DELETE",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Prefer":"return=minimal"}
+        }).catch(function(){});
+        if(notify)notify("Sauvegarde journalière Supabase effectuée — "+today);
+      }).catch(function(){});
+    }).catch(function(){});
+  }).catch(function(){});
+}
+
+// ─── SUPABASE STORAGE (upload/download fichiers) ────────────────────────
+var STORAGE_BUCKET = "documents";
+var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+
+function uploadToStorage(file, folder, callback) {
+  if (file.size > MAX_FILE_SIZE) { callback("Fichier trop volumineux (max 10 Mo)"); return; }
+  var ts = Date.now();
+  var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  var path = folder + "/" + ts + "_" + safeName;
+  fetch(SUPABASE_URL + "/storage/v1/object/" + STORAGE_BUCKET + "/" + path, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": file.type, "x-upsert": "true" },
+    body: file
+  }).then(function(r) {
+    if (r.ok) {
+      var publicUrl = SUPABASE_URL + "/storage/v1/object/public/" + STORAGE_BUCKET + "/" + path;
+      callback(null, publicUrl, path);
+    } else { r.json().then(function(err) { callback(err.message || err.error || "Erreur upload"); }).catch(function() { callback("Erreur upload"); }); }
+  }).catch(function() { callback("Erreur réseau"); });
+}
+
+function deleteFromStorage(path, callback) {
+  fetch(SUPABASE_URL + "/storage/v1/object/" + STORAGE_BUCKET + "/" + path, {
+    method: "DELETE",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+  }).then(function() { callback(null); }).catch(function() { callback("Erreur suppression"); });
+}
+
+// ─── AUDIT LOG UTILITIES ─────────────────────────────────────────────────
+function computeDiff(oldObj,newObj){
+  if(!oldObj||!newObj)return[];
+  var skip=["fileUrl","filePath","uploadedAt"];
+  var changes=[];
+  var allKeys=Object.keys(Object.assign({},oldObj,newObj));
+  allKeys.forEach(function(k){
+    if(skip.indexOf(k)>=0)return;
+    var ov=oldObj[k]===undefined?"":oldObj[k];
+    var nv=newObj[k]===undefined?"":newObj[k];
+    if(JSON.stringify(ov)!==JSON.stringify(nv))changes.push({champ:k,avant:String(ov),apres:String(nv)});
+  });
+  return changes;
+}
+function queueAuditEntry(entry){
+  try{var q=JSON.parse(localStorage.getItem("pharmashield_audit_queue")||"[]");q.push(entry);if(q.length>500)q=q.slice(-500);localStorage.setItem("pharmashield_audit_queue",JSON.stringify(q));}catch(x){}
+}
+function flushAuditQueue(){
+  if(!SYNC_ENABLED)return;
+  try{
+    var q=JSON.parse(localStorage.getItem("pharmashield_audit_queue")||"[]");
+    if(!q.length)return;
+    q.forEach(function(entry){fetch(SUPABASE_URL+"/rest/v1/audit_log",{method:"POST",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify(entry)}).catch(function(){});});
+    localStorage.removeItem("pharmashield_audit_queue");
+  }catch(x){}
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────
+var today = new Date();
+function diffDays(d) { return Math.ceil((new Date(d) - today) / 86400000); }
+function fmtDate(d) { return d && d !== "—" ? new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}) : "—"; }
+
+function getStatut(dateStr) {
+  if (!dateStr || dateStr === "—") return "inconnu";
+  var d = diffDays(dateStr);
+  if (d < 0) return "echu";
+  if (d <= 30) return "urgent";
+  if (d <= 90) return "proche";
+  return "conforme";
+}
+
+var sColors = {
+  conforme:{bg:"#E8F5E9",text:"#2E7D32",dot:"#4CAF50"},
+  proche:{bg:"#FFF3E0",text:"#E65100",dot:"#FF9800"},
+  urgent:{bg:"#FBE9E7",text:"#BF360C",dot:"#F44336"},
+  echu:{bg:"#FFEBEE",text:"#B71C1C",dot:"#D32F2F"},
+  inconnu:{bg:"#ECEFF1",text:"#546E7A",dot:"#90A4AE"}
+};
+var sLabels = {conforme:"Conforme",proche:"< 90 j",urgent:"< 30 j",echu:"Échu",inconnu:"N/D"};
+
+// ─── SVG ICON ───────────────────────────────────────────────────────────
+function Icon(props) {
+  return e("svg",{width:props.size||20,height:props.size||20,viewBox:"0 0 24 24",fill:"none",stroke:props.color||"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"},
+    e("path",{d:props.d}));
+}
+
+var ic = {
+  dashboard:"M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
+  list:"M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01",
+  calendar:"M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2z M16 2v4 M8 2v4 M3 10h18",
+  equip:"M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
+  info:"M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 16v-4 M12 8h.01",
+  search:"M11 19a8 8 0 100-16 8 8 0 000 16z M21 21l-4.35-4.35",
+  alert:"M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z M12 9v4 M12 17h.01",
+  check:"M20 6L9 17l-5-5",
+  thermo:"M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z",
+  droplet:"M12 2.69l5.66 5.66a8 8 0 11-11.31 0z",
+  edit:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7 M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  trash:"M3 6h18 M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2",
+  plus:"M12 5v14 M5 12h14",
+  reset:"M1 4v6h6 M23 20v-6h-6 M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15",
+  close:"M18 6L6 18 M6 6l12 12",
+  download:"M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M7 10l5 5 5-5 M12 15V3",
+  upload:"M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M17 8l-5-5-5 5 M12 3v12",
+  settings:"M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01",
+  file:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+  eye:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 100 6 3 3 0 000-6z",
+  journal:"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+};
+
+// ─── BADGE ──────────────────────────────────────────────────────────────
+function Badge(props) {
+  var c = sColors[props.statut] || sColors.inconnu;
+  return e("span",{style:{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:c.bg,color:c.text}},
+    e("span",{style:{width:7,height:7,borderRadius:"50%",background:c.dot,display:"inline-block"}}),
+    sLabels[props.statut] || props.statut);
+}
+
+// ─── MODAL ──────────────────────────────────────────────────────────────
+function Modal(props) {
+  return e("div",{className:"modal-overlay",onClick:props.onClose},
+    e("div",{className:"modal-box",onClick:function(ev){ev.stopPropagation();}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("h3",{style:{fontSize:18,fontWeight:700,color:"#0D2137",margin:0}},props.title),
+        e("button",{className:"btn-icon",onClick:props.onClose},e(Icon,{d:ic.close,size:16,color:"#888"}))),
+      props.children));
+}
+
+// ─── FIELD ──────────────────────────────────────────────────────────────
+function Field(props) {
+  var inp;
+  if (props.options) {
+    inp = e("select",{value:props.value||"",onChange:function(ev){props.onChange(ev.target.value);}},
+      props.options.map(function(o){return e("option",{key:o,value:o},o);}));
+  } else {
+    inp = e("input",{type:props.type||"text",value:props.value||"",onChange:function(ev){props.onChange(ev.target.value);}});
+  }
+  return e("div",{className:"form-group"},e("label",null,props.label),inp);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// MAIN APP
+// ═════════════════════════════════════════════════════════════════════════
+function MetroGest() {
+  var ps = useState("dashboard"); var page = ps[0]; var setPage = ps[1];
+  var ss = useState(""); var search = ss[0]; var setSearch = ss[1];
+  var fs = useState("tous"); var fStat = fs[0]; var setFStat = fs[1];
+  var fe = useState("tous"); var fEmpl = fe[0]; var setFEmpl = fe[1];
+  var ft = useState("tous"); var fType = ft[0]; var setFType = ft[1];
+  var se = useState(null); var selEquip = se[0]; var setSelEquip = se[1];
+  var my = useState(2026); var maintYear = my[0]; var setMaintYear = my[1];
+
+  var ds1 = useState(function(){return loadData("enr",DEFAULT_ENREGISTREURS);}); var enr = ds1[0]; var setEnr = ds1[1];
+  var ds2 = useState(function(){return loadData("ei",DEFAULT_EI);}); var ei = ds2[0]; var setEI = ds2[1];
+  var ds3 = useState(function(){return loadData("maint",DEFAULT_MAINT);}); var maint = ds3[0]; var setMaint = ds3[1];
+  var ds4 = useState(function(){return loadData("mc",{});}); var mc = ds4[0]; var setMC = ds4[1];
+  var ds9 = useState(function(){return loadData("maintInter",[]);}); var maintInter = ds9[0]; var setMaintInter = ds9[1];
+  var ds5 = useState(function(){return loadData("pm",DEFAULT_PM);}); var pm = ds5[0]; var setPM = ds5[1];
+  var ds6 = useState(function(){return loadData("tol",DEFAULT_TOL);}); var tol = ds6[0]; var setTol = ds6[1];
+  var ds7 = useState(function(){try{var d=localStorage.getItem("pharmashield_societe");return d?JSON.parse(d):DEFAULT_SOCIETE;}catch(x){return DEFAULT_SOCIETE;}}); var soc = ds7[0]; var setSoc = ds7[1];
+  var ds8 = useState(function(){return loadData("docs",[]);}); var docs = ds8[0]; var setDocs = ds8[1];
+
+  var ds10 = useState(function(){return loadData("corbeille",[]);}); var corbeille = ds10[0]; var setCorbeille = ds10[1];
+  var als=useState([]);var auditLog=als[0];var setAuditLog=als[1];
+  var afs=useState({action:"",user:"",entite:""});var auditFilter=afs[0];var setAuditFilter=afs[1];
+  var axs=useState(null);var expandedAudit=axs[0];var setExpandedAudit=axs[1];
+  var ses=useState(false);var syncError=ses[0];var setSyncError=ses[1];
+
+  var ms = useState(null); var modal = ms[0]; var setModal = ms[1];
+  var modalRef=useRef(null);
+  var eds = useState({}); var ed = eds[0]; var setEd = eds[1];
+  var eis = useState(-1); var edIdx = eis[0]; var setEdIdx = eis[1];
+  var cs = useState(null); var conf = cs[0]; var setConf = cs[1];
+  var ts = useState(""); var toast = ts[0]; var setToast = ts[1];
+  var sfs = useState(function(){return Object.assign({},soc);}); var socForm = sfs[0]; var setSocForm = sfs[1];
+
+  useEffect(function(){saveData("enr",enr);},[enr]);
+  useEffect(function(){saveData("ei",ei);},[ei]);
+  useEffect(function(){saveData("maint",maint);},[maint]);
+  useEffect(function(){saveData("mc",mc);},[mc]);
+  useEffect(function(){saveData("maintInter",maintInter);},[maintInter]);
+  useEffect(function(){saveData("pm",pm);},[pm]);
+  useEffect(function(){saveData("tol",tol);},[tol]);
+  useEffect(function(){localStorage.setItem("pharmashield_societe",JSON.stringify(soc));if(SYNC_ENABLED)cloudSave("pharmashield_societe","shared",soc);},[soc]);
+  useEffect(function(){saveData("docs",docs);},[docs]);
+  useEffect(function(){saveData("corbeille",corbeille);},[corbeille]);
+  useEffect(function(){setSocForm(Object.assign({},soc));},[soc]);
+
+  // ─── Corbeille & Backup ──────────────────────────────────────────────
+  function moveToTrash(type,item){
+    var entry={id:"TRASH-"+Date.now(),type:type,data:item,deletedAt:new Date().toISOString()};
+    setCorbeille(function(p){var n=p.slice();n.unshift(entry);if(n.length>50)n=n.slice(0,50);return n;});
+  }
+
+  function restoreFromTrash(trashIdx){
+    var entry=corbeille[trashIdx];if(!entry)return;
+    var t=entry.type;var d=entry.data;
+    if(t==="enregistreur")setEnr(function(p){return p.concat([d]);});
+    else if(t==="equipement_intermediaire")setEI(function(p){return p.concat([d]);});
+    else if(t==="intervention")setMaintInter(function(p){return p.concat([d]);});
+    else if(t==="equipement_maint")setMaint(function(p){return p.concat([d]);});
+    else if(t==="document")setDocs(function(p){return p.concat([d]);});
+    setCorbeille(function(p){return p.filter(function(_,i){return i!==trashIdx;});});
+    showToast("Élément restauré");
+  }
+
+  function permanentDelete(trashIdx){
+    setCorbeille(function(p){return p.filter(function(_,i){return i!==trashIdx;});});
+    showToast("Supprimé définitivement");
+  }
+
+  function emptyTrash(){
+    setConf({msg:"Vider la corbeille ? Cette action est irréversible.\n"+corbeille.length+" élément(s) seront supprimés définitivement.",fn:function(){
+      setCorbeille([]);setConf(null);showToast("Corbeille vidée");
+    }});
+  }
+
+  var MAX_BACKUPS=10;
+  function createBackup(reason){
+    var backups=loadData("backups",[]);
+    var snapshot={id:"BKP-"+Date.now(),reason:reason,date:new Date().toISOString(),data:{enregistreurs:enr,equipIntermed:ei,maintenanceItems:maint,maintenanceInterventions:maintInter,documents:docs,societe:soc}};
+    backups.unshift(snapshot);if(backups.length>MAX_BACKUPS)backups=backups.slice(0,MAX_BACKUPS);
+    saveData("backups",backups);
+  }
+  function getBackups(){return loadData("backups",[]);}
+  function restoreBackup(bkpIdx){
+    var backups=getBackups();var bkp=backups[bkpIdx];if(!bkp)return;
+    setConf({msg:"Restaurer le point du "+new Date(bkp.date).toLocaleString("fr-FR")+" ?\n("+bkp.reason+")\nCela remplacera toutes les données actuelles.",fn:function(){
+      if(bkp.data.enregistreurs)setEnr(bkp.data.enregistreurs);
+      if(bkp.data.equipIntermed)setEI(bkp.data.equipIntermed);
+      if(bkp.data.maintenanceItems)setMaint(bkp.data.maintenanceItems);
+      if(bkp.data.maintenanceInterventions)setMaintInter(bkp.data.maintenanceInterventions);
+      if(bkp.data.documents)setDocs(bkp.data.documents);
+      if(bkp.data.societe)setSoc(bkp.data.societe);
+      setConf(null);showToast("Données restaurées");
+    }});
+  }
+  function deleteBackup(bkpIdx){var backups=getBackups();backups.splice(bkpIdx,1);saveData("backups",backups);showToast("Point supprimé");}
+
+  // ─── Indicateur en ligne / hors ligne ──────────────────────────────
+  var onlineState=useState(navigator.onLine);var isOnline=onlineState[0];var setIsOnline=onlineState[1];
+  var conflictState=useState(null);var conflictData=conflictState[0];var setConflictData=conflictState[1];
+  var cstep=useState("initial");var conflictStep=cstep[0];var setConflictStep=cstep[1];
+  var cchk=useState(false);var conflictChecked=cchk[0];var setConflictChecked=cchk[1];
+
+  useEffect(function(){
+    function goOnline(){setIsOnline(true);checkConflicts();flushAuditQueue();}
+    function goOffline(){setIsOnline(false);showToast("Mode hors ligne — vos modifications sont sauvegardées localement");}
+    window.addEventListener("online",goOnline);
+    window.addEventListener("offline",goOffline);
+    return function(){window.removeEventListener("online",goOnline);window.removeEventListener("offline",goOffline);};
+  },[]);
+  useEffect(function(){
+    function onErr(){setSyncError(true);}
+    function onOk(){setSyncError(false);}
+    window.addEventListener("ps_sync_error",onErr);
+    window.addEventListener("ps_sync_ok",onOk);
+    return function(){window.removeEventListener("ps_sync_error",onErr);window.removeEventListener("ps_sync_ok",onOk);};
+  },[]);
+
+  function getLocalHash(){
+    var data=JSON.stringify({enr:enr,ei:ei,maint:maint,maintInter:maintInter});
+    var h=0;for(var i=0;i<data.length;i++){h=((h<<5)-h)+data.charCodeAt(i);h|=0;}
+    return h.toString(36);
+  }
+
+  function checkConflicts(){
+    if(!SYNC_ENABLED)return;
+    cloudLoadAll(function(map){
+      if(!map)return;
+      if(map.mg_backups)localStorage.setItem("mg_backups",JSON.stringify(map.mg_backups));
+      // Fusion automatique par enregistrement — plus de modal bloquant
+      var ajouts=0,ecrases=0;
+      function applyMerge(local,server,keyFn,setter){
+        if(!server)return;
+        var lMap={};local.forEach(function(r){var k=keyFn(r);if(k)lMap[k]=r;});
+        server.forEach(function(srv){
+          var k=keyFn(srv);if(!k)return;
+          if(!lMap[k]){ajouts++;}
+          else if(srv._ts&&lMap[k]._ts&&new Date(srv._ts)>new Date(lMap[k]._ts)){ecrases++;}
+        });
+        setter(smartMerge(local,server,keyFn));
+      }
+      if(map.mg_enr)applyMerge(enr,map.mg_enr,function(r){return r.code;},setEnr);
+      if(map.mg_ei)applyMerge(ei,map.mg_ei,function(r){return r.code;},setEI);
+      if(map.mg_maint)applyMerge(maint,map.mg_maint,function(r){return r.equipement;},setMaint);
+      if(map.mg_mc)setMC(map.mg_mc);
+      if(map.mg_maintInter)applyMerge(maintInter,map.mg_maintInter,function(r){return r.id;},setMaintInter);
+      if(map.mg_pm)setPM(map.mg_pm);
+      if(map.mg_tol)setTol(map.mg_tol);
+      if(map.mg_docs)applyMerge(docs,map.mg_docs,function(r){return r.id;},setDocs);
+      if(map.pharmashield_societe)setSoc(map.pharmashield_societe);
+      // Toast informatif discret — uniquement si quelque chose a changé
+      var msg=[];
+      if(ajouts>0)msg.push(ajouts+" ajout(s) du serveur intégré(s)");
+      if(ecrases>0)msg.push(ecrases+" fiche(s) mise(s) à jour — voir le journal");
+      if(msg.length>0)setTimeout(function(){showToast("Sync : "+msg.join(" · "));},400);
+    });
+  }
+
+  function resolveConflict(choice){
+    if(!conflictData)return;
+    if(choice==="server"){
+      createBackup("Avant remplacement par les donnees serveur");
+      var map=conflictData.map;
+      if(map.mg_backups)localStorage.setItem("mg_backups",JSON.stringify(map.mg_backups));
+      if(map.mg_enr)setEnr(function(l){return smartMerge(l,map.mg_enr,function(r){return r.code;});});
+      if(map.mg_ei)setEI(function(l){return smartMerge(l,map.mg_ei,function(r){return r.code;});});
+      if(map.mg_maint)setMaint(function(l){return smartMerge(l,map.mg_maint,function(r){return r.equipement;});});
+      if(map.mg_mc)setMC(map.mg_mc);
+      if(map.mg_maintInter)setMaintInter(function(l){return smartMerge(l,map.mg_maintInter,function(r){return r.id;});});
+      if(map.mg_pm)setPM(map.mg_pm);
+      if(map.mg_tol)setTol(map.mg_tol);
+      if(map.mg_docs)setDocs(function(l){return smartMerge(l,map.mg_docs,function(r){return r.id;});});
+      if(map.pharmashield_societe)setSoc(map.pharmashield_societe);
+      showToast("Donnees serveur chargees — backup local cree");
+    } else if(choice==="local"){
+      showToast("Donnees locales conservees — elles seront synchronisees");
+    } else if(choice==="export"){
+      var data={enregistreurs:enr,equipIntermed:ei,maintenanceItems:maint,maintenanceInterventions:maintInter,documents:docs,societe:soc,_exportReason:"Sauvegarde avant sync",_date:new Date().toISOString()};
+      var json=JSON.stringify(data,null,2);
+      var blob=new Blob([json],{type:"application/json"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a");
+      a.href=url;a.download="pharmashield-metrologie-backup-"+new Date().toISOString().slice(0,10)+".json";
+      document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+      showToast("Donnees locales exportees — chargement des donnees serveur");
+      resolveConflict("server");return;
+    }
+    setConflictData(null);setConflictStep("initial");setConflictChecked(false);
+  }
+
+  // Sync FROM Supabase on first load
+  useEffect(function(){
+    checkConflicts();
+    if(SYNC_ENABLED)setTimeout(function(){triggerDailyBackup(showToast);},5000);
+  },[]);
+
+  // Auto-sync toutes les 30s — bloqué si un formulaire est ouvert
+  useEffect(function(){modalRef.current=modal;},[modal]);
+  useEffect(function(){
+    if(!SYNC_ENABLED)return;
+    var setters={enr:setEnr,ei:setEI,maint:setMaint,mc:setMC,maintInter:setMaintInter,pm:setPM,tol:setTol,docs:setDocs,soc:setSoc};
+    var timer=setInterval(function(){
+      if(isOnline&&!conflictData&&!modalRef.current)
+        cloudPoll(setters,function(){showToast("Données actualisées depuis le serveur");});
+    },30000);
+    return function(){clearInterval(timer);};
+  },[isOnline,conflictData]);
+
+  function showToast(msg){setToast(msg);setTimeout(function(){setToast("");},2500);}
+
+  // ─── IMPORT / EXPORT ────────────────────────────────────────────────
+  function exportData() {
+    var data = {
+      enregistreurs: enr,
+      equipIntermed: ei,
+      maintenanceItems: maint,
+      maintenanceChecks: mc,
+      maintenanceInterventions: maintInter,
+      pointsMesure: pm,
+      tolerance: tol,
+      societe: soc
+    };
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], {type: "application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var d = new Date();
+    var dateStr = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    a.href = url;
+    a.download = "pharmashield-metrologie-" + dateStr + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Données exportées avec succès");
+  }
+
+  function importData(evt) {
+    var file = evt.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e2) {
+      try {
+        var data = JSON.parse(e2.target.result);
+        setConf({msg:"Importer les données depuis \"" + file.name + "\" ?\nUn point de restauration sera créé.",fn:function(){
+          createBackup("Avant import depuis "+file.name);
+          if (data.enregistreurs) setEnr(data.enregistreurs);
+          if (data.equipIntermed) setEI(data.equipIntermed);
+          if (data.maintenanceItems) setMaint(data.maintenanceItems);
+          if (data.maintenanceChecks) setMC(data.maintenanceChecks);
+          if (data.maintenanceInterventions) setMaintInter(data.maintenanceInterventions);
+          if (data.pointsMesure) setPM(data.pointsMesure);
+          if (data.tolerance) setTol(data.tolerance);
+          if (data.societe) setSoc(data.societe);
+          setConf(null);
+          showToast("Données importées avec succès");
+        }});
+      } catch(ex) {
+        showToast("Erreur : fichier JSON invalide");
+      }
+    };
+    reader.readAsText(file);
+    evt.target.value = "";
+  }
+
+  // ─── Import/Export par catégorie ────────────────────────────────────
+  var ieFileRef=useRef(null);
+  var ieCategory=useState("");var ieCurrentCat=ieCategory[0];var setIECurrentCat=ieCategory[1];
+
+  var IE_CATEGORIES=[
+    {id:"enregistreurs",label:"Enregistreurs",icon:ic.thermo,getData:function(){return enr;},setData:setEnr,count:function(){return enr.length;}},
+    {id:"equipIntermed",label:"Équipements Intermédiaires (CF, Camion...)",icon:ic.equip,getData:function(){return ei;},setData:setEI,count:function(){return ei.length;}},
+    {id:"maintenanceItems",label:"Équipements & Groupes (Planning)",icon:ic.calendar,getData:function(){return maint;},setData:setMaint,count:function(){return maint.length;}},
+    {id:"maintenanceInterventions",label:"Interventions trimestrielles",icon:ic.check,getData:function(){return maintInter;},setData:setMaintInter,count:function(){return maintInter.length;}},
+    {id:"documents",label:"Documents Prestataires",icon:ic.file,getData:function(){return docs;},setData:setDocs,count:function(){return docs.length;}},
+    {id:"societe",label:"Paramètres Société",icon:ic.settings,getData:function(){return soc;},setData:setSoc,count:function(){return 1;}}
+  ];
+
+  function exportCategory(cat){
+    var catDef=IE_CATEGORIES.find(function(c){return c.id===cat;});
+    if(!catDef)return;
+    var payload={};payload[cat]=catDef.getData();payload._type=cat;payload._module="metrologie";payload._exportDate=new Date().toISOString();
+    var json=JSON.stringify(payload,null,2);
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    var d=new Date();
+    var dateStr=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url;a.download="pharmashield-"+cat+"-"+dateStr+".json";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showToast(catDef.label+" exporté(s)");
+  }
+
+  function importCategory(cat,file){
+    if(!file)return;
+    var catDef=IE_CATEGORIES.find(function(c){return c.id===cat;});
+    if(!catDef)return;
+    var reader=new FileReader();
+    reader.onload=function(evt){
+      try{
+        var data=JSON.parse(evt.target.result);
+        var payload=data[cat];
+        if(!payload){showToast("Fichier invalide : données \""+cat+"\" non trouvées");return;}
+        setConf({msg:"Importer "+catDef.label+" depuis ce fichier ?\nCela remplacera les données actuelles de cette catégorie.",fn:function(){
+          catDef.setData(payload);setConf(null);showToast(catDef.label+" importé(s)");
+        }});
+      }catch(err){showToast("Erreur de lecture du fichier JSON");}
+    };
+    reader.readAsText(file);
+  }
+
+  function exportAllMetro(){
+    var data={enregistreurs:enr,equipIntermed:ei,maintenanceItems:maint,maintenanceInterventions:maintInter,maintenanceChecks:mc,pointsMesure:pm,tolerance:tol,documents:docs,societe:soc,_type:"all",_module:"metrologie",_exportDate:new Date().toISOString()};
+    var json=JSON.stringify(data,null,2);
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    var d=new Date();
+    var dateStr=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url;a.download="pharmashield-metrologie-complet-"+dateStr+".json";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showToast("Export complet réalisé");
+  }
+
+  // Enriched + migration champs manquants
+  var enriched = useMemo(function(){return enr.map(function(r){
+    var defaults={tolerance:r.tolerance||"± 0,1 °C",prestataire:r.prestataire||"",certificat:r.certificat||"",resultat:r.resultat||"",statutEquip:r.statutEquip||(r.categorie==="A"?"En stock":"Actif")};
+    return Object.assign({},defaults,r,{statut:getStatut(r.prochainEtal),joursRestants:r.prochainEtal&&r.prochainEtal!=="—"?diffDays(r.prochainEtal):null,tolerance:defaults.tolerance,statutEquip:defaults.statutEquip});
+  });},[enr]);
+
+  // Auto-migration : écrire les champs manquants dans enr une seule fois
+  useEffect(function(){
+    var needsMigration=enr.some(function(r){return !r.tolerance||!r.statutEquip;});
+    if(needsMigration){
+      setEnr(enr.map(function(r){
+        return Object.assign({tolerance:"± 0,1 °C",prestataire:"",certificat:"",resultat:"",statutEquip:r.categorie==="A"?"En stock":"Actif"},r,
+          {tolerance:r.tolerance||"± 0,1 °C",statutEquip:r.statutEquip||(r.categorie==="A"?"En stock":"Actif")});
+      }));
+    }
+  },[]);
+  var enrichedEI = useMemo(function(){return ei.map(function(r){return Object.assign({},r,{statut:getStatut(r.prochaineValid),joursRestants:r.prochaineValid&&r.prochaineValid!=="—"?diffDays(r.prochaineValid):null});});},[ei]);
+
+  var emplacements = useMemo(function(){var s=new Set();enriched.forEach(function(r){s.add(r.emplacement);});return Array.from(s).sort();},[enriched]);
+  var types = useMemo(function(){var s=new Set();enriched.forEach(function(r){s.add(r.type);});return Array.from(s).sort();},[enriched]);
+
+  var filtered = useMemo(function(){
+    return enriched.filter(function(r){
+      if(search&&r.code.toLowerCase().indexOf(search.toLowerCase())<0&&r.serie.toLowerCase().indexOf(search.toLowerCase())<0&&r.emplacement.toLowerCase().indexOf(search.toLowerCase())<0)return false;
+      if(fStat!=="tous"&&r.statut!==fStat)return false;
+      if(fEmpl!=="tous"&&r.emplacement!==fEmpl)return false;
+      if(fType!=="tous"&&r.type!==fType)return false;
+      return true;
+    });
+  },[enriched,search,fStat,fEmpl,fType]);
+
+  var stats = useMemo(function(){
+    var s={total:enriched.length,conforme:0,proche:0,urgent:0,echu:0};
+    enriched.forEach(function(r){if(s[r.statut]!==undefined)s[r.statut]++;});
+    return s;
+  },[enriched]);
+
+  var planning = useMemo(function(){
+    return enriched.slice().sort(function(a,b){
+      if(!a.prochainEtal)return 1;if(!b.prochainEtal)return -1;
+      return new Date(a.prochainEtal)-new Date(b.prochainEtal);
+    });
+  },[enriched]);
+
+  // CRUD Enregistreurs
+  function openEnrForm(idx){
+    if(idx>=0){setEd(Object.assign({},enr[idx]));setEdIdx(idx);}
+    else{setEd({code:"",serie:"",emplacement:"",type:"Température",plage:"15-25°C",dernierEtal:"",prochainEtal:"",categorie:"B",tolerance:"± 0,1 °C",prestataire:"",certificat:"",resultat:"",statutEquip:"Actif"});setEdIdx(-1);}
+    setModal("enr");
+  }
+  function saveEnr(){
+    if(!ed.code||!ed.emplacement||!ed.type){showToast("Code, Emplacement et Type obligatoires");return;}var u=enr.slice();
+    var r=Object.assign({},ed,{_ts:new Date().toISOString()});
+    if(edIdx>=0){logAudit("MODIFICATION","enregistreur",r.code,r.code,enr[edIdx],r);u[edIdx]=r;}else{logAudit("AJOUT","enregistreur",r.code,r.code,null,r);u.push(r);}
+    setEnr(u);setModal(null);showToast(edIdx>=0?"Enregistreur modifié":"Enregistreur ajouté");
+  }
+  function deleteEnr(idx){
+    setConf({msg:"Supprimer l'enregistreur "+enr[idx].code+" ?\nIl sera placé dans la corbeille.",fn:function(){logAudit("SUPPRESSION","enregistreur",enr[idx].code,enr[idx].code,enr[idx],null);createBackup("Suppression enregistreur "+enr[idx].code);moveToTrash("enregistreur",enr[idx]);setEnr(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Enregistreur déplacé vers la corbeille");}});
+  }
+
+  // CRUD Equip Interm
+  function openEIForm(idx){
+    if(idx>=0){setEd(Object.assign({},ei[idx],{groupesStr:ei[idx].groupes.join(", ")}));setEdIdx(idx);}
+    else{setEd({code:"",type:"Chambre froide",designation:"",plage:"",derniereValid:"",prochaineValid:"",dateEffective:"",groupes:[],groupesStr:"",prochaineMaintGrp:"—"});setEdIdx(-1);}
+    setModal("ei");
+  }
+  function saveEI(){
+    if(!ed.code||!ed.designation){showToast("Code et Désignation obligatoires");return;}
+    var toSave=Object.assign({},ed,{groupes:ed.groupesStr?ed.groupesStr.split(",").map(function(s){return s.trim();}).filter(Boolean):[],_ts:new Date().toISOString()});
+    delete toSave.groupesStr;
+    var u=ei.slice();if(edIdx>=0){logAudit("MODIFICATION","equipement_intermediaire",toSave.code,toSave.designation,ei[edIdx],toSave);u[edIdx]=toSave;}else{logAudit("AJOUT","equipement_intermediaire",toSave.code,toSave.designation,null,toSave);u.push(toSave);}
+    setEI(u);setModal(null);showToast(edIdx>=0?"Équipement modifié":"Équipement ajouté");
+  }
+  function deleteEI(idx){
+    setConf({msg:"Supprimer "+ei[idx].designation+" ?\nIl sera placé dans la corbeille.",fn:function(){logAudit("SUPPRESSION","equipement_intermediaire",ei[idx].code,ei[idx].designation,ei[idx],null);createBackup("Suppression "+ei[idx].designation);moveToTrash("equipement_intermediaire",ei[idx]);setEI(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Équipement déplacé vers la corbeille");}});
+  }
+
+  // CRUD Maintenance
+  function openMaintForm(idx){
+    if(idx>=0){setEd({equipement:maint[idx].equipement,groupesStr:maint[idx].groupes.join(", ")});setEdIdx(idx);}
+    else{setEd({equipement:"",groupesStr:""});setEdIdx(-1);}
+    setModal("maint");
+  }
+  function saveMaint(){
+    if(!ed.equipement){showToast("Nom d'équipement obligatoire");return;}
+    var toSave={equipement:ed.equipement,groupes:ed.groupesStr?ed.groupesStr.split(",").map(function(s){return s.trim();}).filter(Boolean):[],_ts:new Date().toISOString()};
+    var u=maint.slice();if(edIdx>=0)u[edIdx]=toSave;else u.push(toSave);
+    setMaint(u);setModal(null);showToast(edIdx>=0?"Maintenance modifiée":"Maintenance ajoutée");
+  }
+  function deleteMaint(idx){
+    setConf({msg:"Supprimer "+maint[idx].equipement+" ?\nIl sera placé dans la corbeille.",fn:function(){createBackup("Suppression équipement "+maint[idx].equipement);moveToTrash("equipement_maint",maint[idx]);setMaint(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Équipement déplacé vers la corbeille");}});
+  }
+
+  // CRUD References
+  function openRefForm(){setEd(Object.assign({},pm,{tolerance:tol}));setModal("ref");}
+  function saveRef(){setPM({temp_15_25:ed.temp_15_25,temp_02_08:ed.temp_02_08,humidite:ed.humidite});setTol(ed.tolerance);setModal(null);showToast("Références mises à jour");}
+
+  function handleReset(){
+    setConf({msg:"Réinitialiser toutes les données aux valeurs par défaut ?\nUn point de restauration sera créé.",fn:function(){
+      createBackup("Avant réinitialisation complète");
+      setEnr(DEFAULT_ENREGISTREURS);setEI(DEFAULT_EI);setMaint(DEFAULT_MAINT);setMC({});setMaintInter([]);setPM(DEFAULT_PM);setTol(DEFAULT_TOL);setSoc(DEFAULT_SOCIETE);setConf(null);showToast("Données réinitialisées — backup créé");
+    }});
+  }
+
+  var miFileRef=useRef(null);
+  var TRIM_LABELS=["T1 (Jan-Mar)","T2 (Avr-Jun)","T3 (Jul-Sep)","T4 (Oct-Déc)"];
+  var MI_EQUIP_OPTIONS=[];
+  ei.forEach(function(item){item.groupes.forEach(function(grp){MI_EQUIP_OPTIONS.push(item.designation+" — "+grp);});});
+
+  function openMIForm(idx){
+    if(idx>=0){setEd(Object.assign({},maintInter[idx]));setEdIdx(idx);}
+    else{setEd({id:"MI-"+Date.now(),equipement:"",groupe:"",annee:maintYear,trimestre:1,datePlan:"",dateReal:"",prestataire:"",resultat:"",observations:"",docUrl:"",docTitre:"",docId:""});setEdIdx(-1);}
+    setModal("mi");
+  }
+
+  function saveMIForm(){
+    if(!ed.equipement||!ed.datePlan){showToast("Équipement et date planifiée obligatoires");return;}
+    var file=miFileRef.current&&miFileRef.current.files[0];
+    if(file){
+      setIsUploading(true);
+      var folder="metrologie/interventions/"+ed.equipement.replace(/[^a-zA-Z0-9-]/g,"_");
+      uploadToStorage(file,folder,function(err,url){
+        setIsUploading(false);
+        if(err){showToast("Erreur: "+err);return;}
+        var item=Object.assign({},ed,{docUrl:url,docTitre:file.name,docId:"MIDOC-"+Date.now(),_ts:new Date().toISOString()});
+        var u=maintInter.slice();
+        if(edIdx>=0){logAudit("MODIFICATION","intervention",item.id,item.equipement+" T"+item.trimestre,maintInter[edIdx],item);u[edIdx]=item;}else{logAudit("AJOUT","intervention",item.id,item.equipement+" T"+item.trimestre,null,item);u.push(item);}
+        setMaintInter(u);setModal(null);showToast("Intervention enregistrée");
+      });
+    } else {
+      var u=maintInter.slice();var saved=Object.assign({},ed,{_ts:new Date().toISOString()});
+      if(edIdx>=0){logAudit("MODIFICATION","intervention",saved.id,saved.equipement+" T"+saved.trimestre,maintInter[edIdx],saved);u[edIdx]=saved;}else{logAudit("AJOUT","intervention",saved.id,saved.equipement+" T"+saved.trimestre,null,saved);u.push(saved);}
+      setMaintInter(u);setModal(null);showToast(edIdx>=0?"Intervention modifiée":"Intervention ajoutée");
+    }
+  }
+
+  function deleteMI(idx){
+    var item=maintInter[idx];
+    setConf({msg:"Supprimer l'intervention \""+item.equipement+" — "+item.groupe+" T"+item.trimestre+" "+item.annee+"\" ?\nElle sera placée dans la corbeille.",fn:function(){
+      logAudit("SUPPRESSION","intervention",item.id,item.equipement+" T"+item.trimestre,item,null);
+      createBackup("Suppression intervention "+item.equipement+" T"+item.trimestre);moveToTrash("intervention",item);
+      setMaintInter(function(p){return p.filter(function(_,i){return i!==idx;});});
+      setConf(null);showToast("Intervention déplacée vers la corbeille");
+    }});
+  }
+
+  var maintAlertes=useMemo(function(){
+    return maintInter.filter(function(mi){return mi.datePlan&&!mi.dateReal&&diffDays(mi.datePlan)<0;}).map(function(mi){
+      return{equipement:mi.equipement,groupe:mi.groupe,trimestre:"T"+mi.trimestre+" "+mi.annee,datePlan:mi.datePlan,joursRetard:Math.abs(diffDays(mi.datePlan))};
+    }).sort(function(a,b){return b.joursRetard-a.joursRetard;});
+  },[maintInter]);
+
+  var maintProchaines=useMemo(function(){
+    return maintInter.filter(function(mi){return mi.datePlan&&!mi.dateReal&&diffDays(mi.datePlan)>=0&&diffDays(mi.datePlan)<=30;}).map(function(mi){
+      return{equipement:mi.equipement,groupe:mi.groupe,trimestre:"T"+mi.trimestre,datePlan:mi.datePlan,joursRestants:diffDays(mi.datePlan)};
+    }).sort(function(a,b){return a.joursRestants-b.joursRestants;});
+  },[maintInter]);
+
+  // Browser notifications for overdue interventions
+  useEffect(function(){
+    if(maintAlertes.length===0)return;
+    if(!("Notification" in window))return;
+    if(Notification.permission==="granted"){
+      new Notification("PharmaSHIELD — Alertes Maintenance",{body:maintAlertes.length+" intervention(s) en retard",icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚠️</text></svg>"});
+    } else if(Notification.permission!=="denied"){
+      Notification.requestPermission();
+    }
+  },[]);
+
+  var currentUser=(function(){try{var s=sessionStorage.getItem("ps_user")||localStorage.getItem("ps_user");return s?JSON.parse(s):null;}catch(x){return null;}})();
+  if(!currentUser){window.location.replace("index.html");return null;}
+  var userRole=currentUser.role;
+  var isAdmin=userRole==="admin";
+
+  var FALLBACK_PERMS={
+    resp_qualite:{enregistreurs:"Complet",equip_interm:"Complet",documents:"Complet",parc_auto:"Lecture",levage:"Lecture",infrastructure:"Lecture",interventions:"Lecture",import_export:"Ecriture",corbeille:"Complet",parametres:"—",administration:"—"},
+    asst_qualite:{enregistreurs:"Ecriture",equip_interm:"Ecriture",documents:"Ecriture",parc_auto:"Lecture",levage:"Lecture",infrastructure:"Lecture",interventions:"Lecture",import_export:"Lecture",corbeille:"Lecture",parametres:"—",administration:"—"},
+    resp_maintenance:{enregistreurs:"—",equip_interm:"—",documents:"—",parc_auto:"Complet",levage:"Complet",infrastructure:"Complet",interventions:"Complet",import_export:"Ecriture",corbeille:"Complet",parametres:"—",administration:"—"}
+  };
+  var permState=useState(function(){try{var d=localStorage.getItem("pharmashield_perms");return d?JSON.parse(d):FALLBACK_PERMS;}catch(x){return FALLBACK_PERMS;}});
+  var PERMS_LOCAL=permState[0];
+  useEffect(function(){
+    if(!SYNC_ENABLED)return;
+    fetch(SUPABASE_URL+"/rest/v1/data_store?id=eq.pharmashield_perms&select=data",{
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+    }).then(function(r){return r.json();}).then(function(rows){
+      if(rows&&rows[0]&&rows[0].data){permState[1](rows[0].data);localStorage.setItem("pharmashield_perms",JSON.stringify(rows[0].data));}
+    }).catch(function(){});
+  },[]);
+  function getPerm(rubrique){
+    if(isAdmin)return"Complet";
+    if(!userRole||!PERMS_LOCAL[userRole])return"Lecture";
+    return PERMS_LOCAL[userRole][rubrique]||"—";
+  }
+  function canRead(r){var p=getPerm(r);return p==="Complet"||p==="Ecriture"||p==="Lecture";}
+  function canWrite(r){var p=getPerm(r);return p==="Complet"||p==="Ecriture";}
+  function canDelete(r){return getPerm(r)==="Complet";}
+
+  // ─── JOURNAL D'AUDIT ────────────────────────────────────────────────────
+  function logAudit(action,entiteType,entiteId,entiteLabel,oldData,newData){
+    var user=currentUser;
+    var entry={ts:new Date().toISOString(),user_id:user?user.id:"inconnu",user_nom:user?user.nom:"Inconnu",module:"metrologie",action:action,entite_type:entiteType,entite_id:String(entiteId||""),entite_label:String(entiteLabel||""),modifications:computeDiff(oldData,newData),ancienne_valeur:oldData||null,nouvelle_valeur:newData||null};
+    setAuditLog(function(prev){return [entry].concat(prev).slice(0,200);});
+    if(SYNC_ENABLED&&isOnline){fetch(SUPABASE_URL+"/rest/v1/audit_log",{method:"POST",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify(entry)}).catch(function(){queueAuditEntry(entry);});}
+    else{queueAuditEntry(entry);}
+  }
+  useEffect(function(){
+    if(page!=="journal"||!SYNC_ENABLED)return;
+    fetch(SUPABASE_URL+"/rest/v1/audit_log?module=eq.metrologie&order=ts.desc&limit=150",{headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}).then(function(r){return r.json();}).then(function(rows){if(Array.isArray(rows))setAuditLog(rows);}).catch(function(){});
+  },[page]);
+
+  var permPageMap={liste:"enregistreurs",equipements:"equip_interm",documents:"documents",importexport:"import_export",corbeille:"corbeille",parametres:"parametres",reference:"enregistreurs",journal:"enregistreurs"};
+
+  var allNavItems=[
+    {id:"dashboard",label:"Tableau de bord",icon:ic.dashboard,perm:null},
+    {id:"liste",label:"Enregistreurs",icon:ic.list,perm:"enregistreurs"},
+    {id:"equipements",label:"Équip. Intermédiaires",icon:ic.equip,perm:"equip_interm"},
+    {id:"reference",label:"Références",icon:ic.info,perm:"enregistreurs"},
+    {id:"documents",label:"Documents Prestataires",icon:ic.file,perm:"documents"},
+    {id:"journal",label:"Journal des modifications",icon:ic.journal,perm:null,adminOnly:true},
+    {id:"importexport",label:"Import / Export",icon:ic.download,perm:"import_export"},
+    {id:"corbeille",label:"Corbeille"+(corbeille.length>0?" ("+corbeille.length+")":""),icon:ic.trash,perm:"corbeille"},
+    {id:"parametres",label:"Paramètres Société",icon:ic.settings,perm:"parametres"}
+  ];
+  var navItems=allNavItems.filter(function(n){if(n.adminOnly&&!isAdmin)return false;return !n.perm||canRead(n.perm);});
+
+  // ─── NOTIFICATIONS GLOBALES ────────────────────────────────────────────
+  var globalNotifs=[];
+  if(stats.echu>0)globalNotifs.push({color:"#F44336",bg:"#FFEBEE",border:"#EF9A9A",text:stats.echu+" etalonnage(s) echu(s)",page:"liste"});
+  if(stats.urgent>0)globalNotifs.push({color:"#E65100",bg:"#FFF3E0",border:"#FFE082",text:stats.urgent+" etalonnage(s) < 30 jours",page:"liste"});
+  if(maintAlertes.length>0)globalNotifs.push({color:"#C62828",bg:"#FFEBEE",border:"#EF9A9A",text:maintAlertes.length+" intervention(s) en retard",page:"equipements"});
+  if(maintProchaines.length>0)globalNotifs.push({color:"#E65100",bg:"#FFF3E0",border:"#FFE082",text:maintProchaines.length+" intervention(s) < 30 jours",page:"equipements"});
+
+  var notifBanner=globalNotifs.length>0&&page!=="dashboard"?e("div",{style:{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:8,padding:"8px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+    e(Icon,{d:ic.alert,size:16,color:"#F9A825"}),
+    globalNotifs.map(function(n,i){
+      return e("span",{key:i,onClick:function(){setPage(n.page);},style:{fontSize:11,color:n.color,fontWeight:600,cursor:"pointer",padding:"2px 8px",background:n.bg,borderRadius:6,border:"1px solid "+n.border}},n.text);
+    })):null;
+
+  // ─── RENDER ───────────────────────────────────────────────────────────
+  var content = null;
+
+  // ═══ DASHBOARD ═══
+  if(page==="dashboard"){
+    var catB=enriched.filter(function(r){return r.categorie==="B";}).length;
+    var catA=enriched.filter(function(r){return r.categorie==="A";}).length;
+    var kpis=[
+      {label:"Total enregistreurs",value:stats.total,color:"#1B4965"},
+      {label:"B — Terrain (actifs)",value:catB,color:"#7B1FA2"},
+      {label:"A — Référence (stock)",value:catA,color:"#1565C0"},
+      {label:"Conformes",value:stats.conforme,color:"#2E7D32"},
+      {label:"< 30 jours",value:stats.urgent,color:"#BF360C"},
+      {label:"Échus",value:stats.echu,color:"#B71C1C"}
+    ];
+
+    content = e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 20px",color:"#0D2137"}},"Tableau de bord métrologique"),
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:24}},
+        kpis.map(function(k,i){return e("div",{key:i,style:{background:"#fff",borderRadius:10,padding:"16px 14px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:"4px solid "+k.color}},
+          e("div",{style:{fontSize:26,fontWeight:800,color:k.color}},k.value),
+          e("div",{style:{fontSize:11,color:"#666",marginTop:4}},k.label));})
+      ),
+
+      (stats.echu>0||stats.urgent>0)?e("div",{style:{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:10,padding:"16px 20px",marginBottom:24,display:"flex",alignItems:"flex-start",gap:12}},
+        e(Icon,{d:ic.alert,size:20,color:"#F9A825"}),
+        e("div",null,
+          e("div",{style:{fontWeight:700,fontSize:14,color:"#F57F17",marginBottom:4}},"Alertes étalonnage"),
+          e("div",{style:{fontSize:13,color:"#5D4037"}},
+            stats.echu>0?e("span",{style:{marginRight:16}},stats.echu+" étalonnage(s) échu(s)"):null,
+            stats.urgent>0?e("span",null,stats.urgent+" étalonnage(s) à réaliser sous 30 jours"):null))):null,
+
+      maintAlertes.length>0?e("div",{style:{background:"#FFEBEE",border:"1px solid #EF9A9A",borderRadius:10,padding:"16px 20px",marginBottom:24,display:"flex",alignItems:"flex-start",gap:12}},
+        e(Icon,{d:ic.alert,size:20,color:"#F44336"}),
+        e("div",null,
+          e("div",{style:{fontWeight:700,fontSize:14,color:"#C62828",marginBottom:4}},"Alertes interventions — "+maintAlertes.length+" en retard"),
+          maintAlertes.slice(0,3).map(function(a,i){
+            return e("div",{key:i,style:{fontSize:12,color:"#B71C1C",marginBottom:2}},
+              "• "+a.equipement+" — "+a.groupe+" ("+a.trimestre+") : "+a.joursRetard+"j de retard");}),
+          e("button",{onClick:function(){setPage("equipements");},style:{marginTop:8,background:"none",border:"1px solid #EF9A9A",borderRadius:6,padding:"4px 12px",fontSize:11,color:"#C62828",cursor:"pointer",fontWeight:600}},"Voir le planning →"))):null,
+
+      maintProchaines.length>0?e("div",{style:{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:10,padding:"16px 20px",marginBottom:24,display:"flex",alignItems:"flex-start",gap:12}},
+        e(Icon,{d:ic.calendar,size:20,color:"#F9A825"}),
+        e("div",null,
+          e("div",{style:{fontWeight:700,fontSize:14,color:"#F57F17",marginBottom:4}},maintProchaines.length+" intervention(s) à réaliser sous 30 jours"),
+          maintProchaines.map(function(a,i){
+            return e("div",{key:i,style:{fontSize:12,color:"#5D4037",marginBottom:2}},
+              "• "+a.equipement+" — "+a.groupe+" : dans "+a.joursRestants+"j ("+fmtDate(a.datePlan)+")");}),
+          e("button",{onClick:function(){setPage("equipements");},style:{marginTop:8,background:"none",border:"1px solid #FFE082",borderRadius:6,padding:"4px 12px",fontSize:11,color:"#F57F17",cursor:"pointer",fontWeight:600}},"Planifier →"))):null,
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}},
+        e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Répartition par emplacement"),
+          emplacements.map(function(emp){
+            var count=enriched.filter(function(r){return r.emplacement===emp;}).length;
+            var pct=enriched.length?(count/enriched.length)*100:0;
+            return e("div",{key:emp,style:{marginBottom:8}},
+              e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}},
+                e("span",{style:{color:"#444"}},emp),e("span",{style:{fontWeight:600,color:"#1B4965"}},count)),
+              e("div",{style:{height:6,background:"#EEF4FF",borderRadius:3}},
+                e("div",{style:{height:6,background:"#1B4965",borderRadius:3,width:pct+"%"}})));
+          })
+        ),
+        e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Équipements intermédiaires"),
+          enrichedEI.map(function(r,i){
+            return e("div",{key:i,style:{padding:"10px 0",borderBottom:i<enrichedEI.length-1?"1px solid #f0f0f0":"none"}},
+              e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("div",null,e("div",{style:{fontSize:13,fontWeight:600}},r.designation),e("div",{style:{fontSize:11,color:"#888"}},r.plage)),
+                e(Badge,{statut:r.statut})),
+              e("div",{style:{fontSize:11,color:"#999",marginTop:4}},"Prochaine validation : "+fmtDate(r.prochaineValid)));
+          })
+        )
+      ),
+
+      e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+        e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Prochains étalonnages à réaliser"),
+        e("table",{style:{width:"100%",fontSize:12}},
+          e("thead",null,e("tr",{style:{borderBottom:"2px solid #E8EBF0"}},
+            ["Code","Emplacement","Plage","Prochain étal.","Jours restants","Statut"].map(function(h){return e("th",{key:h,style:{padding:"8px 10px",textAlign:"left",fontWeight:700,color:"#0D2137",fontSize:11,textTransform:"uppercase"}},h);}))),
+          e("tbody",null,planning.slice(0,10).map(function(r,i){
+            return e("tr",{key:i,style:{borderBottom:"1px solid #f5f5f5",background:i%2===0?"#FAFBFC":"#fff"}},
+              e("td",{style:{padding:"8px 10px",fontWeight:600,color:"#1B4965"}},r.code),
+              e("td",{style:{padding:"8px 10px"}},r.emplacement),
+              e("td",{style:{padding:"8px 10px",fontSize:11,color:"#666"}},r.plage),
+              e("td",{style:{padding:"8px 10px"}},fmtDate(r.prochainEtal)),
+              e("td",{style:{padding:"8px 10px",fontWeight:600,color:r.joursRestants<0?"#B71C1C":r.joursRestants<30?"#BF360C":r.joursRestants<90?"#E65100":"#2E7D32"}},
+                r.joursRestants!==null?(r.joursRestants<0?Math.abs(r.joursRestants)+"j en retard":r.joursRestants+"j"):"—"),
+              e("td",{style:{padding:"8px 10px"}},e(Badge,{statut:r.statut})));
+          }))))
+    );
+  }
+
+  // ═══ LISTE ENREGISTREURS ═══
+  var fCat=useState("tous");var fCategorie=fCat[0];var setFCategorie=fCat[1];
+  var enrSort=useState("code");var sortBy=enrSort[0];var setSortBy=enrSort[1];
+
+  var filteredSorted=useMemo(function(){
+    var f=enriched.filter(function(r){
+      if(search&&r.code.toLowerCase().indexOf(search.toLowerCase())<0&&r.serie.toLowerCase().indexOf(search.toLowerCase())<0&&r.emplacement.toLowerCase().indexOf(search.toLowerCase())<0)return false;
+      if(fStat!=="tous"&&r.statut!==fStat)return false;
+      if(fEmpl!=="tous"&&r.emplacement!==fEmpl)return false;
+      if(fType!=="tous"&&r.type!==fType)return false;
+      if(fCategorie!=="tous"&&r.categorie!==fCategorie)return false;
+      return true;
+    });
+    if(sortBy==="prochainEtal")f.sort(function(a,b){if(!a.prochainEtal)return 1;if(!b.prochainEtal)return -1;return new Date(a.prochainEtal)-new Date(b.prochainEtal);});
+    else if(sortBy==="categorie")f.sort(function(a,b){return(a.categorie||"").localeCompare(b.categorie||"");});
+    else if(sortBy==="emplacement")f.sort(function(a,b){return(a.emplacement||"").localeCompare(b.emplacement||"");});
+    else f.sort(function(a,b){return(a.code||"").localeCompare(b.code||"");});
+    return f;
+  },[enriched,search,fStat,fEmpl,fType,fCategorie,sortBy]);
+
+  if(page==="liste"&&!selEquip){
+    content = e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Enregistreurs"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},"Gestion métrologique — étalonnage et vérification")),
+        e("div",{style:{display:"flex",alignItems:"center",gap:12}},
+          e("span",{style:{fontSize:13,color:"#888"}},filteredSorted.length+" / "+enriched.length),
+          canWrite("enregistreurs")?e("button",{className:"btn btn-primary",onClick:function(){openEnrForm(-1);}},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter"):null)),
+
+      e("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}},
+        e("div",{style:{position:"relative",flex:"1 1 180px"}},
+          e("input",{value:search,onChange:function(ev){setSearch(ev.target.value);},placeholder:"Rechercher code, série, emplacement…",style:{width:"100%",padding:"8px 12px 8px 32px",border:"1px solid #ddd",borderRadius:8,fontSize:12,outline:"none",boxSizing:"border-box"}}),
+          e("span",{style:{position:"absolute",left:8,top:8}},e(Icon,{d:ic.search,size:14,color:"#aaa"}))),
+        e("select",{value:fCategorie,onChange:function(ev){setFCategorie(ev.target.value);},style:{padding:"8px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,background:"#fff"}},
+          e("option",{value:"tous"},"Toutes catégories"),e("option",{value:"A"},"A — Référence (stock)"),e("option",{value:"B"},"B — Terrain")),
+        e("select",{value:fStat,onChange:function(ev){setFStat(ev.target.value);},style:{padding:"8px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,background:"#fff"}},
+          e("option",{value:"tous"},"Tous statuts"),e("option",{value:"conforme"},"Conforme"),e("option",{value:"proche"},"< 90 jours"),e("option",{value:"urgent"},"< 30 jours"),e("option",{value:"echu"},"Échu")),
+        e("select",{value:fEmpl,onChange:function(ev){setFEmpl(ev.target.value);},style:{padding:"8px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,background:"#fff"}},
+          [e("option",{key:"t",value:"tous"},"Tous emplacements")].concat(emplacements.map(function(v){return e("option",{key:v,value:v},v);}))),
+        e("select",{value:sortBy,onChange:function(ev){setSortBy(ev.target.value);},style:{padding:"8px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,background:"#fff",fontWeight:600}},
+          e("option",{value:"code"},"Tri : Code"),e("option",{value:"prochainEtal"},"Tri : Prochain étal."),e("option",{value:"categorie"},"Tri : Catégorie"),e("option",{value:"emplacement"},"Tri : Emplacement"))),
+
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:1050}},
+          e("thead",null,e("tr",{style:{background:"linear-gradient(135deg,#0D2137,#1B4965)"}},
+            ["Code","Cat.","Emplacement","Type","Plage","Tolerance","Dern. etal.","Proch. etal.","Jours","Prestataire","Certif.","Resultat","Etat",""].map(function(h){
+              return e("th",{key:h||"act",style:{padding:"12px 10px",textAlign:"left",fontWeight:700,color:"#fff",fontSize:10,textTransform:"uppercase",letterSpacing:"0.03em",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,filteredSorted.map(function(r,i){
+            var realIdx=enr.findIndex(function(x){return x.code===r.code&&x.serie===r.serie;});
+            var rowBg=i%2===0?"#fff":"#FAFBFC";
+            var catColors={A:{bg:"#E3F2FD",c:"#1565C0"},B:{bg:"#F3E5F5",c:"#7B1FA2"}};
+            var cc=catColors[r.categorie]||{bg:"#eee",c:"#666"};
+            var jColor=r.joursRestants===null?"#999":r.joursRestants<0?"#B71C1C":r.joursRestants<30?"#BF360C":r.joursRestants<90?"#E65100":"#2E7D32";
+            var jText=r.joursRestants!==null?(r.joursRestants<0?Math.abs(r.joursRestants)+"j retard":r.joursRestants+"j"):"—";
+            var seColors={"Actif":{bg:"#E8F5E9",c:"#2E7D32"},"En stock":{bg:"#E3F2FD",c:"#1565C0"},"Retiré":{bg:"#ECEFF1",c:"#546E7A"},"En réparation":{bg:"#FFF3E0",c:"#E65100"}};
+            var sec=seColors[r.statutEquip]||{bg:"#eee",c:"#666"};
+            return e("tr",{key:i,style:{background:rowBg,borderBottom:"1px solid #f0f0f0",transition:"background 0.1s"},
+              onMouseEnter:function(ev){ev.currentTarget.style.background="#F5F8FF";},
+              onMouseLeave:function(ev){ev.currentTarget.style.background=rowBg;}},
+              e("td",{style:{padding:"10px",cursor:"pointer"},onClick:function(){setSelEquip(r);}},
+                e("div",{style:{fontWeight:700,color:"#1B4965",fontSize:13}},r.code),
+                r.serie&&r.serie!=="—"?e("div",{style:{fontSize:9,color:"#999",fontFamily:"monospace"}},r.serie):null),
+              e("td",{style:{padding:"10px"}},e("span",{style:{background:cc.bg,color:cc.c,padding:"3px 8px",borderRadius:12,fontSize:10,fontWeight:700}},r.categorie==="A"?"A Ref.":r.categorie)),
+              e("td",{style:{padding:"10px",fontSize:12}},r.emplacement),
+              e("td",{style:{padding:"10px",fontSize:12}},
+                e("span",{style:{display:"inline-flex",alignItems:"center",gap:4}},
+                  e(Icon,{d:r.type.indexOf("Humidit")>=0?ic.droplet:ic.thermo,size:12,color:r.type.indexOf("Humidit")>=0?"#0288D1":"#E65100"}),
+                  r.type==="Température/Humidité"?"T/HR":"T")),
+              e("td",{style:{padding:"10px",fontSize:11,color:"#666"}},r.plage),
+              e("td",{style:{padding:"10px",fontSize:12,fontWeight:600,color:"#333"}},r.tolerance||"—"),
+              e("td",{style:{padding:"10px",fontSize:12}},fmtDate(r.dernierEtal)),
+              e("td",{style:{padding:"10px",fontSize:12,fontWeight:600,color:jColor}},fmtDate(r.prochainEtal)),
+              e("td",{style:{padding:"10px",fontWeight:700,fontSize:12,color:jColor}},jText),
+              e("td",{style:{padding:"10px",fontSize:12,color:"#555"}},r.prestataire||e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px",fontSize:11,color:"#1B4965",fontFamily:"monospace"}},r.certificat||e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px"}},r.resultat?e("span",{style:{display:"inline-flex",alignItems:"center",gap:4,color:r.resultat==="Conforme"?"#2E7D32":"#F44336",fontWeight:600,fontSize:11}},
+                r.resultat==="Conforme"?e(Icon,{d:ic.check,size:11,color:"#2E7D32"}):e(Icon,{d:ic.alert,size:11,color:"#F44336"}),r.resultat):e("span",{style:{color:"#ddd",fontSize:11}},"—")),
+              e("td",{style:{padding:"10px"}},e("span",{style:{background:sec.bg,color:sec.c,padding:"3px 8px",borderRadius:12,fontSize:10,fontWeight:600,whiteSpace:"nowrap"}},r.statutEquip||"—")),
+              e("td",{style:{padding:"10px"}},
+                e("div",{style:{display:"flex",gap:4}},
+                  canWrite("enregistreurs")?e("button",{className:"btn-icon",onClick:function(){openEnrForm(realIdx);},title:"Modifier"},e(Icon,{d:ic.edit,size:13,color:"#1B4965"})):null,
+                  canDelete("enregistreurs")?e("button",{className:"btn-icon danger",onClick:function(){deleteEnr(realIdx);},title:"Supprimer"},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+          }))),
+        filteredSorted.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucun enregistreur ne correspond aux critères"):null)
+    );
+  }
+
+  // ═══ FICHE DETAIL ═══
+  if(page==="liste"&&selEquip){
+    var sq=selEquip;
+    content = e("div",null,
+      e("button",{onClick:function(){setSelEquip(null);},style:{border:"none",background:"none",color:"#1B4965",fontSize:13,cursor:"pointer",padding:0,marginBottom:16,fontWeight:600}},"← Retour à la liste"),
+      e("div",{style:{background:"#fff",borderRadius:12,padding:28,boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}},
+          e("div",null,
+            e("h2",{style:{fontSize:22,fontWeight:800,margin:"0 0 4px",color:"#0D2137"}},"Enregistreur "+sq.code),
+            e("div",{style:{fontSize:13,color:"#888"}},"Fiche technique et suivi métrologique")),
+          e(Badge,{statut:sq.statut})),
+        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}},
+          [{l:"Code",v:sq.code},{l:"N° Série",v:sq.serie},{l:"Emplacement",v:sq.emplacement},{l:"Type de mesure",v:sq.type},{l:"Plage d'utilisation",v:sq.plage},{l:"Catégorie",v:sq.categorie},{l:"Dernier étalonnage",v:fmtDate(sq.dernierEtal)},{l:"Prochain étalonnage",v:fmtDate(sq.prochainEtal)},{l:"Jours restants",v:sq.joursRestants!==null?(sq.joursRestants<0?Math.abs(sq.joursRestants)+" jours en retard":sq.joursRestants+" jours"):"—"},{l:"Tolérance",v:tol}].map(function(f,i){
+            return e("div",{key:i,style:{padding:"12px 16px",background:"#F7F8FA",borderRadius:8}},
+              e("div",{style:{fontSize:10,textTransform:"uppercase",color:"#888",fontWeight:700,marginBottom:4}},f.l),
+              e("div",{style:{fontSize:14,fontWeight:600,color:"#1a1a2e"}},f.v));
+          })),
+        e("div",{style:{marginTop:24,padding:"16px 20px",background:"#EEF4FF",borderRadius:8}},
+          e("div",{style:{fontSize:12,fontWeight:700,color:"#1B4965",marginBottom:8}},"Points de mesure applicables"),
+          e("div",{style:{fontSize:12,color:"#333",lineHeight:1.8}},
+            sq.plage.indexOf("15-25")>=0?e("div",null,"Température 15-25°C : "+pm.temp_15_25):null,
+            sq.plage.indexOf("02-08")>=0?e("div",null,"Température 02-08°C : "+pm.temp_02_08):null,
+            sq.plage.toLowerCase().indexOf("humid")>=0?e("div",null,"Humidité : "+pm.humidite):null)))
+    );
+  }
+
+  // ═══ PLANNING ═══
+  if(page==="planning"){
+    content = e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 6px",color:"#0D2137"}},"Planning d'étalonnage"),
+      e("p",{style:{fontSize:13,color:"#888",margin:"0 0 20px"}},"Liste complète triée par date de prochain étalonnage — "+planning.length+" enregistreurs"),
+      e("div",{style:{background:"#fff",borderRadius:10,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"hidden"}},
+        e("table",{style:{width:"100%",fontSize:12}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Code","N° Série","Emplacement","Type","Plage","Cat.","Dernier étal.","Prochain étal.","Jours restants","Statut","Actions"].map(function(h){
+              return e("th",{key:h,style:{padding:"10px 10px",textAlign:"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase",letterSpacing:"0.04em"}},h);
+            }))),
+          e("tbody",null,planning.map(function(r,i){
+            var realIdx=enr.findIndex(function(x){return x.code===r.code&&x.serie===r.serie;});
+            var jColor=r.joursRestants===null?"#666":r.joursRestants<0?"#B71C1C":r.joursRestants<30?"#BF360C":r.joursRestants<90?"#E65100":"#2E7D32";
+            var jText=r.joursRestants!==null?(r.joursRestants<0?Math.abs(r.joursRestants)+"j en retard":r.joursRestants+"j"):"—";
+            return e("tr",{key:i,style:{borderBottom:"1px solid #f3f3f3",background:i%2===0?"#fff":"#FAFBFC"}},
+              e("td",{style:{padding:"9px 10px",fontWeight:700,color:"#1B4965"}},r.code),
+              e("td",{style:{padding:"9px 10px",fontFamily:"monospace",fontSize:11}},r.serie),
+              e("td",{style:{padding:"9px 10px"}},r.emplacement),
+              e("td",{style:{padding:"9px 10px"}},
+                e("span",{style:{display:"inline-flex",alignItems:"center",gap:4}},
+                  e(Icon,{d:r.type.indexOf("Humidit")>=0?ic.droplet:ic.thermo,size:13,color:r.type.indexOf("Humidit")>=0?"#0288D1":"#E65100"}),r.type)),
+              e("td",{style:{padding:"9px 10px",fontSize:11,color:"#666"}},r.plage),
+              e("td",{style:{padding:"9px 10px"}},e("span",{style:{background:r.categorie==="A"?"#E3F2FD":r.categorie==="B"?"#F3E5F5":"#FFF3E0",color:r.categorie==="A"?"#1565C0":r.categorie==="B"?"#7B1FA2":"#E65100",padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:700}},r.categorie)),
+              e("td",{style:{padding:"9px 10px"}},fmtDate(r.dernierEtal)),
+              e("td",{style:{padding:"9px 10px"}},fmtDate(r.prochainEtal)),
+              e("td",{style:{padding:"9px 10px",fontWeight:700,color:jColor}},jText),
+              e("td",{style:{padding:"9px 10px"}},e(Badge,{statut:r.statut})),
+              e("td",{style:{padding:"9px 10px"}},
+                e("div",{style:{display:"flex",gap:4}},
+                  e("button",{className:"btn-icon",onClick:function(){openEnrForm(realIdx);},title:"Modifier"},e(Icon,{d:ic.edit,size:13,color:"#1B4965"})),
+                  e("button",{className:"btn-icon danger",onClick:function(){deleteEnr(realIdx);},title:"Supprimer"},e(Icon,{d:ic.trash,size:13,color:"#F44336"})))));
+          }))),
+        planning.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucun étalonnage planifié"):null)
+    );
+  }
+
+  // ═══ EQUIPEMENTS INTERMEDIAIRES (FICHE UNIFIÉE) ═══
+  var miFiltEquip=useState("Tous");var miEquipF=miFiltEquip[0];var setMiEquipF=miFiltEquip[1];
+  var miFiltTrim=useState("Tous");var miTrimF=miFiltTrim[0];var setMiTrimF=miFiltTrim[1];
+  var miFiltStatut=useState("Tous");var miStatutF=miFiltStatut[0];var setMiStatutF=miFiltStatut[1];
+
+  if(page==="equipements"){
+    var yearInter=maintInter.filter(function(mi){return mi.annee===maintYear;});
+    var yearAlertes=maintAlertes.filter(function(a){return a.trimestre.indexOf(""+maintYear)>=0;});
+    var recapColors={done:"#4CAF50",late:"#F44336",soon:"#FF9800",planned:"#2196F3",empty:"#E0E0E0"};
+
+    var allMI=maintInter.filter(function(mi){return mi.annee===maintYear;});
+    var filteredMI=allMI.filter(function(mi){
+      if(miEquipF!=="Tous"&&(mi.equipement+" — "+mi.groupe)!==miEquipF)return false;
+      if(miTrimF!=="Tous"&&mi.trimestre!==parseInt(miTrimF))return false;
+      if(miStatutF==="Réalisé"&&!mi.dateReal)return false;
+      if(miStatutF==="Planifié"&&(mi.dateReal||!mi.datePlan||(mi.datePlan&&diffDays(mi.datePlan)<0)))return false;
+      if(miStatutF==="En retard"&&!(mi.datePlan&&!mi.dateReal&&diffDays(mi.datePlan)<0))return false;
+      return true;
+    }).sort(function(a,b){return(a.trimestre-b.trimestre)||((a.datePlan||"z")>(b.datePlan||"z")?1:-1);});
+
+    content = e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Équipements intermédiaires"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},"Validation, maintenance trimestrielle et documents")),
+        e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          canWrite("equip_interm")?e("button",{className:"btn btn-primary",onClick:function(){openEIForm(-1);}},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter"):null,
+          e("span",{style:{fontSize:13,color:"#666"}},"Année :"),
+          e("select",{value:maintYear,onChange:function(ev){setMaintYear(+ev.target.value);},style:{padding:"8px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13,background:"#fff",fontWeight:600}},
+            [2024,2025,2026,2027,2028].map(function(y){return e("option",{key:y,value:y},y);})))),
+
+      yearAlertes.length>0?e("div",{style:{background:"#FFEBEE",border:"1px solid #EF9A9A",borderRadius:10,padding:"14px 20px",marginBottom:16,display:"flex",alignItems:"flex-start",gap:12}},
+        e(Icon,{d:ic.alert,size:20,color:"#F44336"}),
+        e("div",null,
+          e("div",{style:{fontWeight:700,fontSize:14,color:"#C62828",marginBottom:4}},yearAlertes.length+" intervention(s) en retard"),
+          yearAlertes.slice(0,5).map(function(a,i){
+            return e("div",{key:i,style:{fontSize:12,color:"#B71C1C",marginBottom:2}},
+              "• "+a.equipement+" — "+a.groupe+" ("+a.trimestre+") : "+a.joursRetard+"j de retard");}))):null,
+
+      // ── Tableau des équipements ──
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto",marginBottom:24}},
+        enrichedEI.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucun équipement. Cliquez \"Ajouter\"."):
+        (function(){
+          var typeColors={"Chambre froide":{bg:"#E3F2FD",color:"#1565C0"},"Véhicule frigorifique":{bg:"#FFF3E0",color:"#E65100"},"Cartographie":{bg:"#F3E5F5",color:"#7B1FA2"}};
+          return e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:950}},
+          e("thead",null,e("tr",{style:{background:"linear-gradient(135deg,#0D2137,#1B4965)"}},
+            ["Code","Type","Désignation","Plage","Dern. Valid.","Proch. Valid.","Jours","Groupes","Statut",""].map(function(h){
+              return e("th",{key:h||"act",style:{padding:"12px 10px",textAlign:"left",fontWeight:700,color:"#fff",fontSize:10,textTransform:"uppercase",letterSpacing:"0.03em",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,enrichedEI.map(function(r,i){
+            var rowBg=i%2===0?"#fff":"#FAFBFC";
+            var tc=typeColors[r.type]||{bg:"#ECEFF1",color:"#546E7A"};
+            return e("tr",{key:r.code,style:{background:rowBg,borderBottom:"1px solid #f0f0f0",transition:"background 0.1s"},
+              onMouseEnter:function(ev){ev.currentTarget.style.background="#F5F8FF";},
+              onMouseLeave:function(ev){ev.currentTarget.style.background=rowBg;}},
+              e("td",{style:{padding:"10px",fontWeight:700,color:"#1B4965",fontSize:13}},r.code),
+              e("td",{style:{padding:"10px"}},e("span",{style:{background:tc.bg,color:tc.color,padding:"3px 8px",borderRadius:12,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}},r.type||"—")),
+              e("td",{style:{padding:"10px",fontWeight:600,color:"#333"}},r.designation),
+              e("td",{style:{padding:"10px",fontSize:11,color:"#666"}},r.plage),
+              e("td",{style:{padding:"10px",fontSize:12}},fmtDate(r.derniereValid)),
+              e("td",{style:{padding:"10px",fontSize:12,fontWeight:500}},fmtDate(r.prochaineValid)),
+              e("td",{style:{padding:"10px",fontWeight:700,fontSize:12,color:r.joursRestants!==null?(r.joursRestants<0?"#B71C1C":r.joursRestants<30?"#BF360C":r.joursRestants<90?"#E65100":"#2E7D32"):"#999"}},
+                r.joursRestants!==null?(r.joursRestants<0?Math.abs(r.joursRestants)+"j retard":r.joursRestants+"j"):"—"),
+              e("td",{style:{padding:"10px"}},
+                r.groupes.length>0?e("div",{style:{display:"flex",gap:3,flexWrap:"wrap"}},
+                  r.groupes.slice(0,3).map(function(g,j){return e("span",{key:j,style:{padding:"2px 6px",background:"#EEF4FF",borderRadius:4,fontSize:9,fontWeight:600,color:"#1B4965"}},g);}),
+                  r.groupes.length>3?e("span",{style:{fontSize:9,color:"#888"}},"+"+( r.groupes.length-3)):null):e("span",{style:{color:"#ccc",fontSize:11}},"—")),
+              e("td",{style:{padding:"10px"}},e(Badge,{statut:r.statut})),
+              e("td",{style:{padding:"10px"}},
+                e("div",{style:{display:"flex",gap:4}},
+                  canWrite("equip_interm")?e("button",{className:"btn-icon",onClick:function(){openEIForm(i);},title:"Modifier"},e(Icon,{d:ic.edit,size:13,color:"#1B4965"})):null,
+                  canDelete("equip_interm")?e("button",{className:"btn-icon danger",onClick:function(){deleteEI(i);},title:"Supprimer"},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+          })));
+        })()),
+
+      // ── Planning trimestriel ──
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto",marginBottom:24}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px",borderBottom:"1px solid #f0f0f0"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:0,color:"#0D2137"}},"Maintenance trimestrielle "+maintYear),
+          canWrite("equip_interm")?e("button",{className:"btn btn-success",style:{fontSize:11,padding:"5px 12px"},onClick:function(){openMIForm(-1);}},e(Icon,{d:ic.plus,size:12,color:"#fff"})," Intervention"):null),
+
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Équipement","Groupe","T1 (Jan-Mar)","T2 (Avr-Jun)","T3 (Jul-Sep)","T4 (Oct-Déc)"].map(function(h,hi){
+              return e("th",{key:h,style:{padding:"10px 12px",textAlign:hi>=2?"center":"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,(function(){
+            var trs=[];
+            enrichedEI.forEach(function(item,eIdx){
+              if(item.groupes.length===0)return;
+              var eqInter=yearInter.filter(function(mi){return mi.equipement===item.designation;});
+              item.groupes.forEach(function(grp,gIdx){
+                var tds=[];
+                if(gIdx===0)tds.push(e("td",{key:"eq",rowSpan:item.groupes.length,style:{padding:"10px 12px",fontWeight:700,color:"#1B4965",verticalAlign:"top",borderRight:"1px solid #f0f0f0",fontSize:12}},item.designation));
+                tds.push(e("td",{key:"grp",style:{padding:"10px 12px",color:"#444",fontWeight:500}},grp));
+                [1,2,3,4].forEach(function(t){
+                  var match=eqInter.find(function(mi){return mi.groupe===grp&&mi.trimestre===t;});
+                  var s="empty";
+                  if(match){if(match.dateReal)s="done";else if(match.datePlan&&diffDays(match.datePlan)<0)s="late";else if(match.datePlan&&diffDays(match.datePlan)<=30)s="soon";else s="planned";}
+                  var bg=s==="empty"?"transparent":s==="done"?"#E8F5E9":s==="late"?"#FFEBEE":s==="soon"?"#FFF3E0":"#E3F2FD";
+                  tds.push(e("td",{key:"t"+t,style:{padding:"4px 6px",textAlign:"center",verticalAlign:"middle"}},
+                    e("div",{onClick:function(){
+                        if(match){var idx=maintInter.indexOf(match);if(idx>=0)openMIForm(idx);}
+                        else{setEd({id:"MI-"+Date.now(),equipement:item.designation,groupe:grp,annee:maintYear,trimestre:t,datePlan:"",dateReal:"",prestataire:"",resultat:"",observations:"",docUrl:"",docTitre:"",docId:""});setEdIdx(-1);setModal("mi");}
+                      },
+                      style:{padding:"5px 3px",borderRadius:6,background:bg,border:s==="empty"?"2px dashed #ddd":"2px solid "+recapColors[s],cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,minHeight:30}},
+                      s==="empty"?e(Icon,{d:ic.plus,size:10,color:"#ccc"}):e("span",{style:{width:9,height:9,borderRadius:"50%",background:recapColors[s],display:"inline-block"}}),
+                      match&&match.datePlan?e("div",{style:{fontSize:8,color:"#666",whiteSpace:"nowrap"}},fmtDate(match.datePlan)):null,
+                      s==="late"?e("div",{style:{fontSize:7,color:"#F44336",fontWeight:700}},Math.abs(diffDays(match.datePlan))+"j"):null,
+                      match&&match.docUrl?e("div",{style:{fontSize:7,color:"#1B4965"}},"📄"):null)));
+                });
+                trs.push(e("tr",{key:eIdx+"-"+gIdx,style:{borderBottom:gIdx===item.groupes.length-1?"2px solid #E8EBF0":"1px solid #f3f3f3"}},tds));
+              });
+            });
+            return trs;
+          })())),
+
+        e("div",{style:{display:"flex",gap:16,padding:"10px 20px",borderTop:"1px solid #f0f0f0",flexWrap:"wrap"}},
+          [{l:"Réalisé",c:"done"},{l:"En retard",c:"late"},{l:"< 30j",c:"soon"},{l:"Planifié",c:"planned"},{l:"Non planifié",c:"empty"}].map(function(x){
+            return e("div",{key:x.l,style:{display:"flex",alignItems:"center",gap:4,fontSize:10,color:"#666"}},
+              e("span",{style:{width:9,height:9,borderRadius:"50%",background:recapColors[x.c],display:"inline-block",border:x.c==="empty"?"2px dashed #ccc":"none"}}),x.l);}))),
+
+      // ── Détail interventions ──
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+        e("h3",{style:{fontSize:14,fontWeight:700,margin:0,color:"#0D2137"}},"Détail des interventions "+maintYear),
+        e("div",{style:{fontSize:12,color:"#888"}},filteredMI.length+" intervention(s)")),
+
+      e("div",{style:{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}},
+        e("select",{value:miEquipF,onChange:function(ev){setMiEquipF(ev.target.value);},style:{padding:"6px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:11,background:"#fff"}},
+          e("option",{value:"Tous"},"Tous les équipements"),
+          MI_EQUIP_OPTIONS.map(function(o){return e("option",{key:o,value:o},o);})),
+        e("select",{value:miTrimF,onChange:function(ev){setMiTrimF(ev.target.value);},style:{padding:"6px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:11,background:"#fff"}},
+          e("option",{value:"Tous"},"Tous trimestres"),
+          [1,2,3,4].map(function(t){return e("option",{key:t,value:t},TRIM_LABELS[t-1]);})),
+        e("select",{value:miStatutF,onChange:function(ev){setMiStatutF(ev.target.value);},style:{padding:"6px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:11,background:"#fff"}},
+          e("option",{value:"Tous"},"Tous statuts"),
+          ["Planifié","En retard","Réalisé"].map(function(s){return e("option",{key:s,value:s},s);}))),
+
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        filteredMI.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#bbb",fontSize:13}},"Aucune intervention pour "+maintYear+". Cliquez sur une case du planning pour planifier."):
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:800}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["T","Équipement","Groupe","Date planifiée","Réalisation","Prestataire","Résultat","Doc",""].map(function(h){
+              return e("th",{key:h,style:{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,filteredMI.map(function(mi,fIdx){
+            var realIdx=maintInter.indexOf(mi);
+            var isRealise=!!mi.dateReal;
+            var isRetard=!isRealise&&mi.datePlan&&diffDays(mi.datePlan)<0;
+            var isProche=!isRealise&&mi.datePlan&&diffDays(mi.datePlan)>=0&&diffDays(mi.datePlan)<=30;
+            var statutColor=isRealise?"#4CAF50":isRetard?"#F44336":isProche?"#FF9800":"#2196F3";
+            var statutBg=isRealise?"#E8F5E9":isRetard?"#FFEBEE":isProche?"#FFF3E0":"#E3F2FD";
+            var rowBg=isRetard?"#FFF8F8":fIdx%2===0?"#fff":"#FAFBFC";
+            return e("tr",{key:mi.id,style:{background:rowBg,borderBottom:"1px solid #f0f0f0"}},
+              e("td",{style:{padding:"10px 12px"}},e("span",{style:{background:statutBg,color:statutColor,padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}},
+                "T"+mi.trimestre)),
+              e("td",{style:{padding:"10px 12px",fontWeight:600,color:"#1B4965"}},mi.equipement),
+              e("td",{style:{padding:"10px 12px",color:"#555"}},mi.groupe),
+              e("td",{style:{padding:"10px 12px"}},
+                mi.datePlan?e("div",null,fmtDate(mi.datePlan),
+                  isRetard?e("div",{style:{fontSize:9,color:"#F44336",fontWeight:700}},Math.abs(diffDays(mi.datePlan))+"j retard"):null,
+                  isProche?e("div",{style:{fontSize:9,color:"#FF9800",fontWeight:600}},"dans "+diffDays(mi.datePlan)+"j"):null):"—"),
+              e("td",{style:{padding:"10px 12px"}},mi.dateReal?e("span",{style:{color:"#2E7D32",fontWeight:600}},fmtDate(mi.dateReal)):e("span",{style:{color:"#ccc"}},"—")),
+              e("td",{style:{padding:"10px 12px",color:"#555"}},mi.prestataire||e("span",{style:{color:"#ccc"}},"—")),
+              e("td",{style:{padding:"10px 12px"}},mi.resultat?e("span",{style:{color:mi.resultat==="Conforme"?"#2E7D32":"#F44336",fontWeight:600,fontSize:11}},mi.resultat):e("span",{style:{color:"#ccc"}},"—")),
+              e("td",{style:{padding:"10px 12px",textAlign:"center"}},mi.docUrl?e("button",{className:"btn-icon",onClick:function(){window.open(mi.docUrl,"_blank");},title:mi.docTitre||"Ouvrir",style:{background:"#EEF4FF",border:"1px solid #90CAF9"}},e(Icon,{d:ic.eye,size:12,color:"#1B4965"})):e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 6px"}},
+                e("div",{style:{display:"flex",gap:3}},
+                  canWrite("equip_interm")?e("button",{className:"btn-icon",onClick:function(){openMIForm(realIdx);},title:"Modifier"},e(Icon,{d:ic.edit,size:12,color:"#1B4965"})):null,
+                  canDelete("equip_interm")?e("button",{className:"btn-icon danger",onClick:function(){deleteMI(realIdx);},title:"Supprimer"},e(Icon,{d:ic.trash,size:12,color:"#F44336"})):null)));
+          }))))
+    );
+  }
+
+  // ═══ REFERENCES ═══
+  if(page==="reference"){
+    content = e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("h2",{style:{fontSize:20,fontWeight:700,margin:0,color:"#0D2137"}},"Références métrologiques"),
+        e("button",{className:"btn btn-primary",onClick:openRefForm},e(Icon,{d:ic.edit,size:14,color:"#fff"})," Modifier")),
+      e("div",{style:{display:"grid",gap:16}},
+        e("div",{style:{background:"#fff",borderRadius:10,padding:24,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 16px",color:"#1B4965"}},"Points de mesure — Température"),
+          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+            e("div",{style:{padding:16,background:"#FFF3E0",borderRadius:8}},
+              e("div",{style:{fontSize:11,textTransform:"uppercase",fontWeight:700,color:"#E65100",marginBottom:8}},"Plage 15-25°C"),
+              e("div",{style:{fontSize:15,fontWeight:600,color:"#333"}},pm.temp_15_25)),
+            e("div",{style:{padding:16,background:"#E3F2FD",borderRadius:8}},
+              e("div",{style:{fontSize:11,textTransform:"uppercase",fontWeight:700,color:"#1565C0",marginBottom:8}},"Plage 02-08°C"),
+              e("div",{style:{fontSize:15,fontWeight:600,color:"#333"}},pm.temp_02_08)))),
+        e("div",{style:{background:"#fff",borderRadius:10,padding:24,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 16px",color:"#1B4965"}},"Points de mesure — Humidité"),
+          e("div",{style:{padding:16,background:"#E1F5FE",borderRadius:8}},
+            e("div",{style:{fontSize:11,textTransform:"uppercase",fontWeight:700,color:"#0277BD",marginBottom:8}},"Plage d'humidité relative"),
+            e("div",{style:{fontSize:15,fontWeight:600,color:"#333"}},pm.humidite))),
+        e("div",{style:{background:"#fff",borderRadius:10,padding:24,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 16px",color:"#1B4965"}},"Informations documentaires"),
+          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+            [{l:"Référence document",v:"A10(PCS07) — Version 05"},{l:"Processus",v:"PCS07 — Amélioration Continue"},{l:"Tolérance",v:tol},{l:"Périodicité étalonnage",v:"Annuelle (365 jours)"},{l:"Utilisateur",v:"Service Qualité"},{l:"Périodicité maintenance",v:"Trimestrielle"}].map(function(f,i){
+              return e("div",{key:i,style:{padding:"12px 16px",background:"#F7F8FA",borderRadius:8}},
+                e("div",{style:{fontSize:10,textTransform:"uppercase",color:"#888",fontWeight:700,marginBottom:3}},f.l),
+                e("div",{style:{fontSize:13,fontWeight:600,color:"#1a1a2e"}},f.v));}))),
+        e("div",{style:{background:"#fff",borderRadius:10,padding:24,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 12px",color:"#1B4965"}},"Catégories d'enregistreurs"),
+          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+            [{cat:"A",label:"Référence (stock Service Qualité)",bg:"#E3F2FD",color:"#1565C0"},
+             {cat:"B",label:"Terrain (déployés sur site)",bg:"#F3E5F5",color:"#7B1FA2"}].map(function(c){
+              return e("div",{key:c.cat,style:{padding:16,background:c.bg,borderRadius:8,textAlign:"center"}},
+                e("div",{style:{fontSize:24,fontWeight:800,color:c.color}},c.cat),
+                e("div",{style:{fontSize:12,color:"#555",marginTop:4}},c.label),
+                e("div",{style:{fontSize:18,fontWeight:700,color:c.color,marginTop:8}},enriched.filter(function(r){return r.categorie===c.cat;}).length));
+            }))))
+    );
+  }
+
+  // ═══ DOCUMENTS PRESTATAIRES ═══
+  var docFileRef=useRef(null);
+  var docUploading=useState(false);var isUploading=docUploading[0];var setIsUploading=docUploading[1];
+  var docFilterType=useState("Tous");var dfType=docFilterType[0];var setDfType=docFilterType[1];
+  var docFilterEntite=useState("Tous");var dfEntite=docFilterEntite[0];var setDfEntite=docFilterEntite[1];
+
+  var DOC_TYPES=["Certificat d'étalonnage","PV de contrôle","Rapport de qualification","Rapport de validation","Rapport de cartographie","Autre"];
+  var ENTITE_TYPES=["Enregistreur","Équipement Intermédiaire"];
+
+  function getAllEntites(){
+    var list=[];
+    enr.forEach(function(r){list.push({type:"Enregistreur",id:r.code,nom:r.code+" — "+r.emplacement+" ("+r.categorie+")"});});
+    ei.forEach(function(q){list.push({type:"Équipement Intermédiaire",id:q.code,nom:q.code+" — "+q.designation});});
+    return list;
+  }
+
+  function saveDoc(){
+    if(!ed.titre||!ed.typeDoc||!ed.entiteId){showToast("Titre, type et équipement obligatoires");return;}
+    var file=docFileRef.current&&docFileRef.current.files[0];
+    if(!file&&edIdx<0){showToast("Veuillez sélectionner un fichier");return;}
+    if(file){
+      setIsUploading(true);
+      var folder="metrologie/"+ed.entiteId;
+      uploadToStorage(file,folder,function(err,url,path){
+        setIsUploading(false);
+        if(err){showToast("Erreur: "+err);return;}
+        var doc=Object.assign({},ed,{fileUrl:url,filePath:path,fileName:file.name,fileSize:file.size,fileType:file.type,uploadedAt:new Date().toISOString(),_ts:new Date().toISOString()});
+        var u=docs.slice();
+        if(edIdx>=0){logAudit("MODIFICATION","document",doc.id,doc.titre,docs[edIdx],doc);u[edIdx]=doc;}else{logAudit("AJOUT","document",doc.id,doc.titre,null,doc);u.push(doc);}
+        setDocs(u);autoLinkCertificat(doc);setModal(null);showToast("Document uploadé avec succès");
+      });
+    } else {
+      var u=docs.slice();var saved=Object.assign({},ed,{_ts:new Date().toISOString()});logAudit("MODIFICATION","document",saved.id,saved.titre,docs[edIdx],saved);u[edIdx]=saved;setDocs(u);autoLinkCertificat(saved);setModal(null);showToast("Document modifié");
+    }
+  }
+
+  function deleteDoc(idx){
+    var doc=docs[idx];
+    setConf({msg:"Supprimer le document \""+doc.titre+"\" ?\nIl sera placé dans la corbeille.",fn:function(){
+      logAudit("SUPPRESSION","document",doc.id,doc.titre,doc,null);
+      createBackup("Suppression document "+doc.titre);moveToTrash("document",doc);
+      setDocs(function(p){return p.filter(function(_,i){return i!==idx;});});
+      setConf(null);showToast("Document déplacé vers la corbeille");
+    }});
+  }
+
+  function openDocForm(idx){
+    if(idx>=0){setEd(Object.assign({},docs[idx]));setEdIdx(idx);}
+    else{setEd({id:"DOC-"+Date.now(),titre:"",typeDoc:"Certificat d'étalonnage",prestataire:"",dateDoc:"",dateValidite:"",reference:"",resultat:"",verifiePar:"",entiteType:"Enregistreur",entiteId:"",entiteNom:"",observations:""});setEdIdx(-1);}
+    setModal("doc");
+  }
+
+  function autoLinkCertificat(doc){
+    if(doc.typeDoc==="Certificat d'étalonnage"&&doc.entiteType==="Enregistreur"&&doc.entiteId&&doc.reference){
+      var idx=enr.findIndex(function(r){return r.code===doc.entiteId;});
+      if(idx>=0){
+        var updated=enr.slice();
+        updated[idx]=Object.assign({},updated[idx],{certificat:doc.reference,prestataire:doc.prestataire||updated[idx].prestataire,resultat:doc.resultat||updated[idx].resultat});
+        setEnr(updated);
+      }
+    }
+  }
+
+  if(page==="documents"){
+    var allEntites=getAllEntites();
+    var filteredDocs=docs.filter(function(d){
+      if(dfType!=="Tous"&&d.typeDoc!==dfType)return false;
+      if(dfEntite!=="Tous"&&d.entiteType!==dfEntite)return false;
+      return true;
+    });
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Documents Prestataires"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},"Certificats, PV, rapports — traçabilité BPD")),
+        canWrite("documents")?e("button",{className:"btn btn-primary",onClick:function(){openDocForm(-1);}},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter un document"):null),
+
+      e("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}},
+        e("select",{value:dfType,onChange:function(ev){setDfType(ev.target.value);},style:{padding:"7px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:12}},
+          e("option",{value:"Tous"},"Tous les types"),
+          DOC_TYPES.map(function(t){return e("option",{key:t,value:t},t);})),
+        e("select",{value:dfEntite,onChange:function(ev){setDfEntite(ev.target.value);},style:{padding:"7px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:12}},
+          e("option",{value:"Tous"},"Tous les équipements"),
+          ENTITE_TYPES.map(function(t){return e("option",{key:t,value:t},t);})),
+        e("div",{style:{marginLeft:"auto",fontSize:13,color:"#888",alignSelf:"center"}},filteredDocs.length+" document(s)")),
+
+      !SYNC_ENABLED?e("div",{style:{background:"#EEF4FF",border:"1px solid #90CAF9",borderRadius:10,padding:14,marginBottom:16,fontSize:12,color:"#1B4965"}},
+        "⚠ Supabase non configuré — les fichiers uploadés ne seront pas stockés en ligne."):null,
+
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        filteredDocs.length===0?e("div",{style:{padding:50,textAlign:"center"}},
+          e(Icon,{d:ic.file,size:40,color:"#ddd"}),
+          e("p",{style:{fontSize:14,color:"#999",marginTop:12}},"Aucun document"),
+          e("p",{style:{fontSize:12,color:"#bbb"}},"Cliquez sur Ajouter un document pour enregistrer un certificat, PV ou rapport")):
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:950}},
+          e("thead",null,e("tr",{style:{background:"linear-gradient(135deg,#0D2137,#1B4965)"}},
+            ["Type","N° Ref.","Titre","Equipement","Prestataire","Date","Validite","Resultat","Verifie par","Doc",""].map(function(h){
+              return e("th",{key:h||"act",style:{padding:"11px 8px",textAlign:"left",fontWeight:700,color:"#fff",fontSize:9,textTransform:"uppercase",letterSpacing:"0.03em",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,filteredDocs.map(function(doc,idx){
+            var realIdx=docs.indexOf(doc);
+            var rowBg=idx%2===0?"#fff":"#FAFBFC";
+            var typeColors={"Certificat d'étalonnage":{bg:"#E3F2FD",c:"#1565C0"},"PV de contrôle":{bg:"#E8F5E9",c:"#2E7D32"},"Rapport de qualification":{bg:"#F3E5F5",c:"#7B1FA2"},"Rapport de validation":{bg:"#FFF3E0",c:"#E65100"},"Rapport de cartographie":{bg:"#E1F5FE",c:"#0277BD"}};
+            var tc=typeColors[doc.typeDoc]||{bg:"#ECEFF1",c:"#546E7A"};
+            return e("tr",{key:doc.id,style:{background:rowBg,borderBottom:"1px solid #f0f0f0"}},
+              e("td",{style:{padding:"10px 8px"}},e("span",{style:{background:tc.bg,color:tc.c,padding:"2px 7px",borderRadius:10,fontSize:9,fontWeight:700,whiteSpace:"nowrap"}},doc.typeDoc)),
+              e("td",{style:{padding:"10px 8px",fontFamily:"monospace",fontSize:11,color:"#1B4965",fontWeight:600}},doc.reference||e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 8px",fontWeight:600,color:"#333"}},doc.titre),
+              e("td",{style:{padding:"10px 8px",fontSize:11,color:"#555"}},doc.entiteNom||"—"),
+              e("td",{style:{padding:"10px 8px",fontSize:11,color:"#555"}},doc.prestataire||e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 8px",fontSize:11}},doc.dateDoc?fmtDate(doc.dateDoc):"—"),
+              e("td",{style:{padding:"10px 8px",fontSize:11}},doc.dateValidite?fmtDate(doc.dateValidite):e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 8px"}},doc.resultat?e("span",{style:{color:doc.resultat==="Conforme"?"#2E7D32":"#F44336",fontWeight:600,fontSize:11}},doc.resultat):e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 8px",fontSize:11,color:"#555"}},doc.verifiePar||e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 8px",textAlign:"center"}},doc.fileUrl?e("button",{className:"btn-icon",onClick:function(){window.open(doc.fileUrl,"_blank");},title:doc.fileName||"Ouvrir",style:{background:"#EEF4FF",border:"1px solid #90CAF9"}},e(Icon,{d:ic.eye,size:12,color:"#1B4965"})):e("span",{style:{color:"#ddd"}},"—")),
+              e("td",{style:{padding:"10px 6px"}},
+                e("div",{style:{display:"flex",gap:3}},
+                  canWrite("documents")?e("button",{className:"btn-icon",onClick:function(){openDocForm(realIdx);},title:"Modifier"},e(Icon,{d:ic.edit,size:12,color:"#1B4965"})):null,
+                  canDelete("documents")?e("button",{className:"btn-icon danger",onClick:function(){deleteDoc(realIdx);},title:"Supprimer"},e(Icon,{d:ic.trash,size:12,color:"#F44336"})):null)));
+          }))))
+    );
+  }
+
+  // ═══ IMPORT / EXPORT ═══
+  if(page==="importexport"){
+    content=e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 6px",color:"#0D2137"}},"Import / Export des données"),
+      e("p",{style:{fontSize:13,color:"#888",margin:"0 0 20px"}},isAdmin?"Exportez ou importez les données par catégorie.":"Importez les données fournies par l'administrateur."),
+
+      isAdmin?e("div",{style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",marginBottom:20}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          e("h3",{style:{fontSize:15,fontWeight:700,margin:0,color:"#0D2137"}},"Données complètes"),
+          e("div",{style:{display:"flex",gap:8}},
+            e("button",{className:"btn btn-primary",onClick:exportAllMetro},e(Icon,{d:ic.download,size:14,color:"#fff"})," Exporter tout"),
+            e("button",{className:"btn btn-success",onClick:function(){document.getElementById("import-file-input").click();}},e(Icon,{d:ic.upload,size:14,color:"#fff"})," Importer tout")))):null,
+
+      e("div",{style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
+        e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 16px",color:"#0D2137"}},isAdmin?"Export / Import par catégorie":"Import par catégorie"),
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Catégorie","Éléments","Actions"].map(function(h){
+              return e("th",{key:h,style:{padding:"12px 16px",textAlign:h==="Actions"?"right":"left",fontWeight:700,color:"#0D2137",fontSize:11,textTransform:"uppercase"}},h);}))),
+          e("tbody",null,IE_CATEGORIES.map(function(cat){
+            return e("tr",{key:cat.id,style:{borderBottom:"1px solid #f0f0f0"}},
+              e("td",{style:{padding:"14px 16px"}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+                  e(Icon,{d:cat.icon,size:18,color:"#1B4965"}),
+                  e("span",{style:{fontWeight:600,color:"#1B4965"}},cat.label))),
+              e("td",{style:{padding:"14px 16px",color:"#888"}},cat.count()+" élément(s)"),
+              e("td",{style:{padding:"14px 16px",textAlign:"right"}},
+                e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
+                  isAdmin?e("button",{className:"btn btn-primary",style:{fontSize:11,padding:"6px 14px"},onClick:function(){exportCategory(cat.id);}},e(Icon,{d:ic.download,size:12,color:"#fff"})," Exporter"):null,
+                  e("button",{className:"btn btn-success",style:{fontSize:11,padding:"6px 14px"},onClick:function(){setIECurrentCat(cat.id);setTimeout(function(){ieFileRef.current&&ieFileRef.current.click();},100);}},e(Icon,{d:ic.upload,size:12,color:"#fff"})," Importer"))));
+          }))),
+
+        e("input",{type:"file",ref:ieFileRef,accept:".json",style:{display:"none"},onChange:function(ev){
+          var file=ev.target.files[0];
+          if(file&&ieCurrentCat)importCategory(ieCurrentCat,file);
+          ev.target.value="";
+        }}),
+
+        !isAdmin?e("div",{style:{marginTop:16,padding:"12px 16px",background:"#EEF4FF",borderRadius:8,fontSize:12,color:"#1B4965"}},
+          "Vous êtes connecté en tant qu'utilisateur. Seul l'administrateur peut exporter les données. Vous pouvez importer les fichiers fournis par votre administrateur."):null,
+
+        isAdmin?e("div",{style:{marginTop:16,padding:"12px 16px",background:"#EEF4FF",borderRadius:8,fontSize:12,color:"#1B4965"}},
+          "Astuce : exportez les données par catégorie pour les partager avec vos collaborateurs. Ils pourront les importer depuis leur interface."):null),
+
+      // Points de restauration
+      e("div",{style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",marginTop:20}},
+        e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Points de restauration"),
+        e("p",{style:{fontSize:12,color:"#888",margin:"0 0 16px"}},"Créés automatiquement avant chaque suppression, import ou réinitialisation (max "+MAX_BACKUPS+")"),
+        (function(){var bkps=getBackups();
+          return bkps.length===0?e("div",{style:{padding:20,textAlign:"center",color:"#bbb",fontSize:13}},"Aucun point de restauration"):
+          e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+            e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+              ["Date","Raison","Actions"].map(function(h){return e("th",{key:h,style:{padding:"10px 14px",textAlign:h==="Actions"?"right":"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase"}},h);}))),
+            e("tbody",null,bkps.map(function(bkp,i){
+              return e("tr",{key:bkp.id,style:{borderBottom:"1px solid #f0f0f0"}},
+                e("td",{style:{padding:"10px 14px",fontSize:12,color:"#555"}},new Date(bkp.date).toLocaleString("fr-FR")),
+                e("td",{style:{padding:"10px 14px",fontSize:12,color:"#1B4965",fontWeight:500}},bkp.reason),
+                e("td",{style:{padding:"10px 14px",textAlign:"right"}},
+                  e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
+                    e("button",{className:"btn btn-success",style:{fontSize:10,padding:"4px 10px"},onClick:function(){restoreBackup(i);}},e(Icon,{d:ic.upload,size:10,color:"#fff"})," Restaurer"),
+                    e("button",{className:"btn btn-danger",style:{fontSize:10,padding:"4px 10px"},onClick:function(){deleteBackup(i);}},e(Icon,{d:ic.trash,size:10,color:"#fff"})))));
+            })));
+        })())
+    );
+  }
+
+  // ═══ CORBEILLE ═══
+  if(page==="corbeille"){
+    var typeLabels={enregistreur:"Enregistreur",equipement_intermediaire:"Équip. Intermédiaire",intervention:"Intervention",equipement_maint:"Équip. Planning",document:"Document"};
+    var typeColors={enregistreur:"#1B4965",equipement_intermediaire:"#7B1FA2",intervention:"#E65100",equipement_maint:"#0277BD",document:"#5D4037"};
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Corbeille"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},corbeille.length+" élément(s) — les éléments supprimés peuvent être restaurés")),
+        corbeille.length>0?e("button",{className:"btn btn-danger",style:{fontSize:12},onClick:emptyTrash},e(Icon,{d:ic.trash,size:14,color:"#fff"})," Vider la corbeille"):null),
+
+      corbeille.length===0?e("div",{style:{textAlign:"center",padding:60,color:"#999"}},
+        e(Icon,{d:ic.trash,size:48,color:"#ddd"}),
+        e("p",{style:{fontSize:14,marginTop:12}},"La corbeille est vide"),
+        e("p",{style:{fontSize:12,color:"#bbb"}},"Les éléments supprimés apparaîtront ici et pourront être restaurés")):
+
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Type","Détail","Supprimé le","Actions"].map(function(h){
+              return e("th",{key:h,style:{padding:"12px 14px",textAlign:h==="Actions"?"right":"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase"}},h);}))),
+          e("tbody",null,corbeille.map(function(entry,i){
+            var d=entry.data;
+            var detail=entry.type==="enregistreur"?(d.code+" — "+d.emplacement):
+              entry.type==="equipement_intermediaire"?(d.code+" — "+d.designation):
+              entry.type==="intervention"?(d.equipement+" — "+d.groupe+" T"+d.trimestre+" "+d.annee):
+              entry.type==="equipement_maint"?(d.equipement+" ("+d.groupes.join(", ")+")"):
+              entry.type==="document"?(d.titre||d.fileName||"Document"):"—";
+            return e("tr",{key:entry.id,style:{borderBottom:"1px solid #f0f0f0"}},
+              e("td",{style:{padding:"12px 14px"}},
+                e("span",{style:{background:typeColors[entry.type]||"#888",color:"#fff",padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:700}},typeLabels[entry.type]||entry.type)),
+              e("td",{style:{padding:"12px 14px",fontWeight:500,color:"#333"}},detail),
+              e("td",{style:{padding:"12px 14px",color:"#888",fontSize:11}},new Date(entry.deletedAt).toLocaleString("fr-FR")),
+              e("td",{style:{padding:"12px 14px",textAlign:"right"}},
+                e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
+                  e("button",{className:"btn btn-success",style:{fontSize:11,padding:"5px 12px"},onClick:function(){restoreFromTrash(i);}},e(Icon,{d:ic.upload,size:12,color:"#fff"})," Restaurer"),
+                  e("button",{className:"btn btn-danger",style:{fontSize:11,padding:"5px 12px"},onClick:function(){permanentDelete(i);}},e(Icon,{d:ic.trash,size:12,color:"#fff"})," Définitif"))));
+          }))))
+    );
+  }
+
+  // ═══ JOURNAL DES MODIFICATIONS ═══
+  if(page==="journal"&&!isAdmin){
+    content=e("div",{style:{textAlign:"center",padding:80,color:"#999"}},
+      e(Icon,{d:ic.alert,size:48,color:"#EF9A9A"}),
+      e("p",{style:{fontSize:16,fontWeight:700,color:"#C62828",marginTop:16}},"Accès réservé à l'administrateur"),
+      e("p",{style:{fontSize:13,color:"#aaa"}},"Cette section est accessible uniquement au compte Administrateur."));
+  }
+  if(page==="journal"&&isAdmin){
+    var actionColors={AJOUT:"#2E7D32",MODIFICATION:"#E65100",SUPPRESSION:"#C62828"};
+    var actionBg={AJOUT:"#E8F5E9",MODIFICATION:"#FFF3E0",SUPPRESSION:"#FFEBEE"};
+    var entiteLabels={enregistreur:"Enregistreur",equipement_intermediaire:"Équip. Interm.",intervention:"Intervention",equipement_maint:"Planning",document:"Document",reference:"Références"};
+    var filteredLog=auditLog.filter(function(ent){
+      if(auditFilter.action&&ent.action!==auditFilter.action)return false;
+      if(auditFilter.user&&(ent.user_nom||"").toLowerCase().indexOf(auditFilter.user.toLowerCase())<0)return false;
+      if(auditFilter.entite&&ent.entite_type!==auditFilter.entite)return false;
+      return true;
+    });
+    function refreshAuditLog(){
+      if(!SYNC_ENABLED)return;
+      fetch(SUPABASE_URL+"/rest/v1/audit_log?module=eq.metrologie&order=ts.desc&limit=150",{headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}).then(function(r){return r.json();}).then(function(rows){if(Array.isArray(rows))setAuditLog(rows);}).catch(function(){});
+    }
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Journal des modifications"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},"Traçabilité BPD — Toutes les modifications enregistrées (",auditLog.length,")")),
+        e("button",{className:"btn btn-secondary",style:{fontSize:12},onClick:refreshAuditLog},e(Icon,{d:ic.reset,size:14,color:"#555"})," Actualiser")),
+      e("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}},
+        e("select",{value:auditFilter.action,onChange:function(ev){setAuditFilter(Object.assign({},auditFilter,{action:ev.target.value}));},style:{padding:"7px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,color:"#333",background:"#fff"}},
+          e("option",{value:""},"Toutes les actions"),
+          e("option",{value:"AJOUT"},"Ajout"),
+          e("option",{value:"MODIFICATION"},"Modification"),
+          e("option",{value:"SUPPRESSION"},"Suppression")),
+        e("select",{value:auditFilter.entite,onChange:function(ev){setAuditFilter(Object.assign({},auditFilter,{entite:ev.target.value}));},style:{padding:"7px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,color:"#333",background:"#fff"}},
+          e("option",{value:""},"Tous les types"),
+          e("option",{value:"enregistreur"},"Enregistreur"),
+          e("option",{value:"equipement_intermediaire"},"Équip. Intermédiaire"),
+          e("option",{value:"intervention"},"Intervention"),
+          e("option",{value:"document"},"Document")),
+        e("input",{type:"text",placeholder:"Filtrer par utilisateur...",value:auditFilter.user,onChange:function(ev){setAuditFilter(Object.assign({},auditFilter,{user:ev.target.value}));},style:{padding:"7px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,minWidth:180}})),
+      filteredLog.length===0?e("div",{style:{textAlign:"center",padding:60,color:"#999"}},
+        e(Icon,{d:ic.journal,size:48,color:"#ddd"}),
+        e("p",{style:{fontSize:14,marginTop:12}},"Aucune modification enregistrée"),
+        e("p",{style:{fontSize:12,color:"#bbb"}},SYNC_ENABLED?"Les modifications apparaîtront ici après la prochaine action":"Connexion Supabase requise")):
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Date / Heure","Utilisateur","Action","Type","Entité","Détails"].map(function(h){
+              return e("th",{key:h,style:{padding:"12px 14px",textAlign:"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,filteredLog.map(function(ent,i){
+            var isExp=expandedAudit===i;
+            var actColor=actionColors[ent.action]||"#888";
+            var actBgColor=actionBg[ent.action]||"#F5F5F5";
+            var mods=Array.isArray(ent.modifications)?ent.modifications:[];
+            return [
+              e("tr",{key:"r"+i,style:{borderBottom:isExp?"none":"1px solid #f0f0f0",cursor:mods.length>0?"pointer":"default",background:isExp?"#FAFBFF":"transparent"},onClick:function(){setExpandedAudit(isExp?null:i);}},
+                e("td",{style:{padding:"10px 14px",color:"#555",fontSize:11,whiteSpace:"nowrap"}},new Date(ent.ts).toLocaleString("fr-FR")),
+                e("td",{style:{padding:"10px 14px",fontWeight:600,color:"#333"}},ent.user_nom||ent.user_id||"—"),
+                e("td",{style:{padding:"10px 14px"}},e("span",{style:{background:actBgColor,color:actColor,padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:700}},ent.action||"—")),
+                e("td",{style:{padding:"10px 14px",color:"#666",fontSize:11}},entiteLabels[ent.entite_type]||ent.entite_type||"—"),
+                e("td",{style:{padding:"10px 14px",fontWeight:500,color:"#333"}},ent.entite_label||ent.entite_id||"—"),
+                e("td",{style:{padding:"10px 14px",color:"#888",fontSize:11}},mods.length>0?e("span",{style:{color:"#1B4965",fontWeight:600,cursor:"pointer"}},mods.length+" champ(s) ",isExp?"▲":"▼"):"—")),
+              isExp&&mods.length>0?e("tr",{key:"e"+i,style:{background:"#F0F4FF",borderBottom:"1px solid #ddd"}},
+                e("td",{colSpan:6,style:{padding:"12px 24px"}},
+                  e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:11}},
+                    e("thead",null,e("tr",{style:{borderBottom:"1px solid #C5D3FF"}},
+                      [["CHAMP","20%"],["AVANT","38%"],["APRÈS","38%"]].map(function(h){return e("th",{key:h[0],style:{textAlign:"left",padding:"4px 8px",fontSize:10,color:"#7B93D0",fontWeight:700,width:h[1]}},h[0]);}))),
+                    e("tbody",null,mods.map(function(m,j){
+                      return e("tr",{key:j,style:{borderTop:"1px solid #E0E8FF"}},
+                        e("td",{style:{padding:"5px 8px",fontWeight:600,color:"#444",verticalAlign:"top"}},m.champ),
+                        e("td",{style:{padding:"5px 8px",color:"#B71C1C",background:"#FFF5F5",wordBreak:"break-word",verticalAlign:"top"}},m.avant||"—"),
+                        e("td",{style:{padding:"5px 8px",color:"#1B5E20",background:"#F1F8E9",wordBreak:"break-word",verticalAlign:"top"}},m.apres||"—"));
+                    }))))) : null
+            ];
+          }))))
+    );
+  }
+
+  // ═══ PARAMETRES SOCIETE ═══
+  if(page==="parametres"){
+    content = e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 6px",color:"#0D2137"}},"Paramètres Société"),
+      e("p",{style:{fontSize:13,color:"#888",margin:"0 0 20px"}},"Informations générales de la société"),
+      e("div",{style:{background:"#fff",borderRadius:12,padding:28,boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}},
+        e("div",{className:"form-row"},
+          e(Field,{label:"Nom de la société",value:socForm.nom,onChange:function(v){setSocForm(Object.assign({},socForm,{nom:v}));}}),
+          e(Field,{label:"Secteur d'activité",value:socForm.secteur,onChange:function(v){setSocForm(Object.assign({},socForm,{secteur:v}));}})),
+        e("div",{className:"form-row"},
+          e(Field,{label:"Adresse",value:socForm.adresse,onChange:function(v){setSocForm(Object.assign({},socForm,{adresse:v}));}}),
+          e(Field,{label:"Téléphone",value:socForm.telephone,onChange:function(v){setSocForm(Object.assign({},socForm,{telephone:v}));}})),
+        e("div",{className:"form-row"},
+          e(Field,{label:"Email",value:socForm.email,onChange:function(v){setSocForm(Object.assign({},socForm,{email:v}));}}),
+          e(Field,{label:"Date de création",type:"date",value:socForm.dateCreation,onChange:function(v){setSocForm(Object.assign({},socForm,{dateCreation:v}));}})),
+        e("div",{className:"form-row"},
+          e(Field,{label:"Responsable Maintenance",value:socForm.responsableMaintenance,onChange:function(v){setSocForm(Object.assign({},socForm,{responsableMaintenance:v}));}}),
+          e(Field,{label:"Responsable Qualité",value:socForm.responsableQualite,onChange:function(v){setSocForm(Object.assign({},socForm,{responsableQualite:v}));}})),
+        e("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:20}},
+          e("button",{className:"btn btn-success",onClick:function(){setSoc(socForm);showToast("Paramètres société enregistrés");}},e(Icon,{d:ic.check,size:14,color:"#fff"})," Enregistrer")))
+    );
+  }
+
+  // ═══ MODALS ═══
+  var modalEl = null;
+
+  if(modal==="enr"){
+    modalEl = e(Modal,{title:edIdx>=0?"Modifier l'enregistreur":"Ajouter un enregistreur",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},
+        e(Field,{label:"Code *",value:ed.code,onChange:function(v){setEd(Object.assign({},ed,{code:v}));}}),
+        e(Field,{label:"N° Série",value:ed.serie,onChange:function(v){setEd(Object.assign({},ed,{serie:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Catégorie *",value:ed.categorie,options:["A","B"],onChange:function(v){setEd(Object.assign({},ed,{categorie:v,statutEquip:v==="A"?"En stock":"Actif"}));}}),
+        e(Field,{label:"Emplacement *",value:ed.emplacement,onChange:function(v){setEd(Object.assign({},ed,{emplacement:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Type",value:ed.type,options:["Température","Température/Humidité"],onChange:function(v){setEd(Object.assign({},ed,{type:v}));}}),
+        e(Field,{label:"Plage",value:ed.plage,onChange:function(v){setEd(Object.assign({},ed,{plage:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Tolérance",value:ed.tolerance,onChange:function(v){setEd(Object.assign({},ed,{tolerance:v}));}}),
+        e(Field,{label:"Statut équipement",value:ed.statutEquip,options:["Actif","En stock","Retiré","En réparation"],onChange:function(v){setEd(Object.assign({},ed,{statutEquip:v}));}})),
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginTop:12,marginBottom:8,borderBottom:"1px solid #eee",paddingBottom:6}},"Étalonnage"),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Dernier étalonnage",type:"date",value:ed.dernierEtal,onChange:function(v){setEd(Object.assign({},ed,{dernierEtal:v}));}}),
+        e(Field,{label:"Prochain étalonnage",type:"date",value:ed.prochainEtal,onChange:function(v){setEd(Object.assign({},ed,{prochainEtal:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Prestataire étalonnage",value:ed.prestataire,onChange:function(v){setEd(Object.assign({},ed,{prestataire:v}));}}),
+        e(Field,{label:"N° Certificat",value:ed.certificat,onChange:function(v){setEd(Object.assign({},ed,{certificat:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Résultat étalonnage",value:ed.resultat,options:["","Conforme","Non conforme","En attente"],onChange:function(v){setEd(Object.assign({},ed,{resultat:v}));}}),
+        e("div",{className:"form-group"})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveEnr},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="ei"){
+    modalEl = e(Modal,{title:edIdx>=0?"Modifier l'équipement":"Ajouter un équipement",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},
+        e(Field,{label:"Code *",value:ed.code,onChange:function(v){setEd(Object.assign({},ed,{code:v}));}}),
+        e(Field,{label:"Type *",value:ed.type,options:["Chambre froide","Véhicule frigorifique","Cartographie"],onChange:function(v){setEd(Object.assign({},ed,{type:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Désignation *",value:ed.designation,onChange:function(v){setEd(Object.assign({},ed,{designation:v}));}}),
+        e(Field,{label:"Plage",value:ed.plage,onChange:function(v){setEd(Object.assign({},ed,{plage:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Dernière validation",type:"date",value:ed.derniereValid,onChange:function(v){setEd(Object.assign({},ed,{derniereValid:v}));}}),
+        e(Field,{label:"Prochaine validation",type:"date",value:ed.prochaineValid,onChange:function(v){setEd(Object.assign({},ed,{prochaineValid:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Date effective",type:"date",value:ed.dateEffective,onChange:function(v){setEd(Object.assign({},ed,{dateEffective:v}));}}),
+        e(Field,{label:"Prochaine maint. groupes",value:ed.prochaineMaintGrp,onChange:function(v){setEd(Object.assign({},ed,{prochaineMaintGrp:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:ed.type==="Chambre froide"?"Groupes froids (virgule)":ed.type==="Cartographie"?"Zones / Magasins (virgule)":"Groupes (virgule)",value:ed.groupesStr,onChange:function(v){setEd(Object.assign({},ed,{groupesStr:v}));}}),
+        e("div",{className:"form-group"})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveEI},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="maint"){
+    modalEl = e(Modal,{title:edIdx>=0?"Modifier la maintenance":"Ajouter une maintenance",onClose:function(){setModal(null);}},
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"Équipement *"),
+        e("input",{value:ed.equipement||"",onChange:function(ev){setEd(Object.assign({},ed,{equipement:ev.target.value}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"Groupes (virgule)"),
+        e("input",{value:ed.groupesStr||"",onChange:function(ev){setEd(Object.assign({},ed,{groupesStr:ev.target.value}));},placeholder:"Groupe 1, Groupe 2, ...",style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveMaint},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="ref"){
+    modalEl = e(Modal,{title:"Modifier les références",onClose:function(){setModal(null);}},
+      e("div",{className:"form-group",style:{marginBottom:12}},e("label",null,"Température 15-25°C"),
+        e("input",{value:ed.temp_15_25||"",onChange:function(ev){setEd(Object.assign({},ed,{temp_15_25:ev.target.value}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},e("label",null,"Température 02-08°C"),
+        e("input",{value:ed.temp_02_08||"",onChange:function(ev){setEd(Object.assign({},ed,{temp_02_08:ev.target.value}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},e("label",null,"Humidité"),
+        e("input",{value:ed.humidite||"",onChange:function(ev){setEd(Object.assign({},ed,{humidite:ev.target.value}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},e("label",null,"Tolérance"),
+        e("input",{value:ed.tolerance||"",onChange:function(ev){setEd(Object.assign({},ed,{tolerance:ev.target.value}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveRef},"Enregistrer")));
+  }
+
+  if(modal==="mi"){
+    var miEquipOptions=[];
+    ei.forEach(function(item){item.groupes.forEach(function(grp){miEquipOptions.push({equip:item.designation,grp:grp,label:item.designation+" — "+grp});});});
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier l'intervention":"Planifier une intervention",onClose:function(){setModal(null);}},
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,borderBottom:"1px solid #eee",paddingBottom:8}},"1. Planification"),
+      e("div",{className:"form-row"},
+        e("div",{className:"form-group"},e("label",null,"ÉQUIPEMENT / GROUPE *"),
+          e("select",{value:ed.equipement&&ed.groupe?(ed.equipement+" — "+ed.groupe):"",onChange:function(ev){
+            var sel=miEquipOptions.find(function(o){return o.label===ev.target.value;});
+            if(sel)setEd(Object.assign({},ed,{equipement:sel.equip,groupe:sel.grp}));else setEd(Object.assign({},ed,{equipement:"",groupe:""}));
+          },style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}},
+            e("option",{value:""},"— Sélectionner —"),
+            miEquipOptions.map(function(o){return e("option",{key:o.label,value:o.label},o.label);}))),
+        e(Field,{label:"Trimestre *",value:ed.trimestre,options:["1","2","3","4"],onChange:function(v){setEd(Object.assign({},ed,{trimestre:parseInt(v)}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Date planifiée *",type:"date",value:ed.datePlan,onChange:function(v){setEd(Object.assign({},ed,{datePlan:v}));}}),
+        e(Field,{label:"Prestataire",value:ed.prestataire,onChange:function(v){setEd(Object.assign({},ed,{prestataire:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Année",type:"number",value:ed.annee,onChange:function(v){setEd(Object.assign({},ed,{annee:parseInt(v)}));}}),
+        e("div",{className:"form-group"})),
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,marginTop:16,borderBottom:"1px solid #eee",paddingBottom:8}},"2. Réalisation (à compléter après l'intervention)"),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Date de réalisation",type:"date",value:ed.dateReal,onChange:function(v){setEd(Object.assign({},ed,{dateReal:v}));}}),
+        e(Field,{label:"Résultat",value:ed.resultat,options:["","Conforme","Non conforme","En attente"],onChange:function(v){setEd(Object.assign({},ed,{resultat:v}));}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"OBSERVATIONS"),
+        e("textarea",{value:ed.observations||"",onChange:function(ev){setEd(Object.assign({},ed,{observations:ev.target.value}));},rows:2,style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13,resize:"vertical"}})),
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,marginTop:16,borderBottom:"1px solid #eee",paddingBottom:8}},"3. Document justificatif (PV, rapport)"),
+      ed.docUrl?e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"8px 12px",background:"#E8F5E9",borderRadius:8,fontSize:12}},
+        "📄 ",e("a",{href:ed.docUrl,target:"_blank",style:{color:"#1B4965",fontWeight:600}},ed.docTitre||"Document joint"),
+        e("button",{onClick:function(){setEd(Object.assign({},ed,{docUrl:"",docTitre:"",docId:""}));},style:{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:"#F44336",fontSize:11}},"Retirer")):null,
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"FICHIER (PDF, PNG, JPG)"),
+        e("input",{type:"file",ref:miFileRef,accept:".pdf,.png,.jpg,.jpeg",style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveMIForm,disabled:isUploading},isUploading?"Upload en cours...":edIdx>=0?"Enregistrer":"Planifier")));
+  }
+
+  if(modal==="doc"){
+    var docEntites=getAllEntites();
+    var filteredEntites=docEntites.filter(function(ent){return ent.type===ed.entiteType;});
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier le document":"Ajouter un document prestataire",onClose:function(){setModal(null);}},
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,borderBottom:"1px solid #eee",paddingBottom:6}},"Identification"),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Type de document *",value:ed.typeDoc,options:DOC_TYPES,onChange:function(v){setEd(Object.assign({},ed,{typeDoc:v}));}}),
+        e(Field,{label:"N° Référence",value:ed.reference,onChange:function(v){setEd(Object.assign({},ed,{reference:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Titre *",value:ed.titre,onChange:function(v){setEd(Object.assign({},ed,{titre:v}));}}),
+        e(Field,{label:"Prestataire",value:ed.prestataire,onChange:function(v){setEd(Object.assign({},ed,{prestataire:v}));}})),
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,marginTop:14,borderBottom:"1px solid #eee",paddingBottom:6}},"Équipement concerné"),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Type d'équipement",value:ed.entiteType,options:ENTITE_TYPES,onChange:function(v){setEd(Object.assign({},ed,{entiteType:v,entiteId:"",entiteNom:""}));}}),
+        e("div",{className:"form-group"},e("label",null,"ÉQUIPEMENT *"),
+          e("select",{value:ed.entiteId||"",onChange:function(ev){var sel=docEntites.find(function(ent){return ent.id===ev.target.value;});setEd(Object.assign({},ed,{entiteId:sel?sel.id:"",entiteNom:sel?sel.nom:""}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}},
+            e("option",{value:""},"— Sélectionner —"),
+            filteredEntites.map(function(ent){return e("option",{key:ent.id,value:ent.id},ent.nom);})))),
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,marginTop:14,borderBottom:"1px solid #eee",paddingBottom:6}},"Dates & Résultat"),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Date du document",type:"date",value:ed.dateDoc,onChange:function(v){setEd(Object.assign({},ed,{dateDoc:v}));}}),
+        e(Field,{label:"Date de validité",type:"date",value:ed.dateValidite,onChange:function(v){setEd(Object.assign({},ed,{dateValidite:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Résultat / Conformité",value:ed.resultat,options:["","Conforme","Non conforme","En attente"],onChange:function(v){setEd(Object.assign({},ed,{resultat:v}));}}),
+        e(Field,{label:"Vérifié par",value:ed.verifiePar,onChange:function(v){setEd(Object.assign({},ed,{verifiePar:v}));}})),
+
+      ed.typeDoc==="Certificat d'étalonnage"&&ed.entiteType==="Enregistreur"&&ed.reference?
+        e("div",{style:{background:"#E8F5E9",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:"#2E7D32"}},
+          "Le N° référence sera automatiquement reporté dans la fiche de l'enregistreur "+ed.entiteId+"."):null,
+
+      e("div",{style:{fontSize:13,fontWeight:700,color:"#0D2137",marginBottom:8,marginTop:14,borderBottom:"1px solid #eee",paddingBottom:6}},"Fichier & Observations"),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"FICHIER (PDF, PNG, JPG) "+(edIdx>=0?"— laisser vide pour garder l'actuel":"*")),
+        e("input",{type:"file",ref:docFileRef,accept:".pdf,.png,.jpg,.jpeg",style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"OBSERVATIONS"),
+        e("textarea",{value:ed.observations||"",onChange:function(ev){setEd(Object.assign({},ed,{observations:ev.target.value}));},rows:2,style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13,resize:"vertical"}})),
+
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveDoc,disabled:isUploading},isUploading?"Upload en cours...":edIdx>=0?"Enregistrer":"Uploader")));
+  }
+
+  var cfs=useState("");var confInput=cfs[0];var setConfInput=cfs[1];
+  var confEl = conf ? e("div",{className:"modal-overlay",onClick:function(){setConf(null);setConfInput("");}},
+    e("div",{className:"modal-box",style:{width:420,textAlign:"center"},onClick:function(ev){ev.stopPropagation();}},
+      e(Icon,{d:ic.alert,size:40,color:"#F44336"}),
+      e("p",{style:{fontSize:14,color:"#333",margin:"16px 0 16px",whiteSpace:"pre-line"}},conf.msg),
+      e("p",{style:{fontSize:12,color:"#888",margin:"0 0 12px"}},'Tapez SUPPRIMER pour confirmer :'),
+      e("input",{value:confInput,onChange:function(ev){setConfInput(ev.target.value);},placeholder:"SUPPRIMER",style:{width:"100%",padding:"10px 14px",border:"2px solid #ddd",borderRadius:8,fontSize:14,textAlign:"center",marginBottom:16,fontFamily:"inherit",letterSpacing:"0.1em"}}),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"center"}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setConf(null);setConfInput("");}},"Annuler"),
+        e("button",{className:"btn btn-danger",style:{opacity:confInput==="SUPPRIMER"?1:0.4,pointerEvents:confInput==="SUPPRIMER"?"auto":"none"},onClick:function(){conf.fn();setConfInput("");}},"Confirmer la suppression")))):null;
+
+  var toastEl = toast ? e("div",{className:"toast"},toast) : null;
+
+  // ═══ LAYOUT ═══
+  var isEmbed=window.location.search.indexOf("embed=1")>=0;
+
+  return e("div",{style:{minHeight:"100vh",background:"#F7F8FA"}},
+    !isEmbed?e("header",{style:{background:"linear-gradient(135deg,#0D2137 0%,#1B4965 100%)",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}},
+      e("div",{style:{display:"flex",alignItems:"center",gap:12}},
+        e("a",{href:"index.html",style:{width:42,height:42,borderRadius:10,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",textDecoration:"none",boxShadow:"0 1px 4px rgba(0,0,0,0.15)"},title:"Retour au portail"},
+          e("img",{src:"logo-sprl.jpg",alt:"SPRL",style:{width:34,height:28,objectFit:"contain"}})),
+        e("div",null,
+          e("div",{style:{fontSize:18,fontWeight:700,letterSpacing:"-0.02em"}},soc.nom||"MétroGest"),
+          e("div",{style:{fontSize:11,opacity:0.7,letterSpacing:"0.04em"}},"GESTION MÉTROLOGIQUE — PCS07"))),
+      e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        e("button",{onClick:function(){setPage("importexport");},style:{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",padding:"7px 14px",borderRadius:8,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontWeight:600}},
+          e(Icon,{d:ic.download,size:14,color:"#fff"})," Import/Export"),
+        isAdmin?e("button",{onClick:handleReset,style:{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",padding:"7px 14px",borderRadius:8,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontWeight:600}},
+          e(Icon,{d:ic.reset,size:14,color:"#fff"})," Réinitialiser"):null,
+        e("div",{style:{fontSize:12,opacity:0.6,textAlign:"right",marginLeft:6}},
+          e("div",null,"Réf. : A10(PCS07) — V05"),
+          e("div",null,soc.responsableQualite||"Service Qualité")))):null,
+
+    e("div",{style:{display:"flex",minHeight:isEmbed?"100vh":"calc(100vh - 70px)"}},
+      e("nav",{style:{width:220,background:"#fff",borderRight:"1px solid #E8EBF0",padding:"12px 0",flexShrink:0}},
+        navItems.map(function(n){
+          return e("button",{key:n.id,onClick:function(){setPage(n.id);setSelEquip(null);},
+            style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 20px",border:"none",background:page===n.id?"#EEF4FF":"transparent",color:page===n.id?"#1B4965":"#555",fontWeight:page===n.id?600:400,fontSize:13,cursor:"pointer",borderLeft:page===n.id?"3px solid #1B4965":"3px solid transparent",textAlign:"left",transition:"all 0.15s"}},
+            e(Icon,{d:n.icon,size:17,color:page===n.id?"#1B4965":"#888"}),n.label);
+        }),
+        !isEmbed?e("div",{style:{borderTop:"1px solid #eee",margin:"12px 20px",padding:"12px 0"}},
+          e("a",{href:"index.html",style:{display:"flex",alignItems:"center",gap:8,color:"#1B4965",fontSize:12,fontWeight:600,textDecoration:"none"}},
+            e(Icon,{d:ic.dashboard,size:14,color:"#1B4965"}),"Retour au portail")):null),
+      e("main",{style:{flex:1,padding:"24px 28px",overflow:"auto",maxHeight:isEmbed?"100vh":"calc(100vh - 70px)"}},
+        !isOnline?e("div",{style:{background:"linear-gradient(135deg,#C62828,#E53935)",color:"#fff",padding:"12px 20px",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 12px rgba(198,40,40,0.3)"}},
+          e("span",{style:{width:12,height:12,borderRadius:"50%",background:"#fff",display:"inline-block",animation:"pulse 1.5s infinite"}}),
+          e("div",null,
+            e("div",{style:{fontWeight:700,fontSize:14}},"Mode hors ligne"),
+            e("div",{style:{fontSize:12,opacity:0.9}},"Vos modifications sont sauvegardees localement. Elles seront synchronisees au retour de la connexion."))):null,
+        notifBanner,content)),
+
+    modalEl,confEl,toastEl,
+
+    // Indicateur erreur sync Supabase
+    syncError&&isOnline?e("div",{style:{position:"fixed",bottom:60,left:24,display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:20,fontSize:11,fontWeight:600,zIndex:2000,background:"#FFF8E1",color:"#E65100",border:"1px solid #FFE082",boxShadow:"0 2px 8px rgba(0,0,0,0.1)",maxWidth:260}},
+      e("span",{style:{width:8,height:8,borderRadius:"50%",background:"#FF9800",display:"inline-block",flexShrink:0}}),
+      "Erreur sauvegarde cloud — données locales OK"):null,
+
+    // Indicateur en ligne / hors ligne
+    e("div",{style:{position:"fixed",bottom:24,left:24,display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:20,fontSize:11,fontWeight:600,zIndex:2000,background:isOnline?"#E8F5E9":"#FFEBEE",color:isOnline?"#2E7D32":"#C62828",border:isOnline?"1px solid #A5D6A7":"1px solid #EF9A9A",boxShadow:"0 2px 8px rgba(0,0,0,0.1)"}},
+      e("span",{style:{width:8,height:8,borderRadius:"50%",background:isOnline?"#4CAF50":"#F44336",display:"inline-block"}}),
+      isOnline?"En ligne":"Hors ligne"),
+
+    // Fusion automatique — le modal de conflit a été remplacé par des toasts
+    null,
+
+    e("input",{id:"import-file-input",type:"file",accept:".json",style:{display:"none"},onChange:importData}));
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(MetroGest));
+</script>
+</body>
+</html>

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SPRL — PharmaSHIELD</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#F7F8FA;color:#1a1a2e;min-height:100vh}
+.login-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D2137 0%,#1B4965 50%,#0D2137 100%)}
+.login-card{background:#fff;border-radius:20px;padding:48px 40px;width:420px;box-shadow:0 24px 80px rgba(0,0,0,0.35);text-align:center}
+.login-card .logo-wrap{width:220px;height:auto;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.login-card .logo-wrap img{width:100%;height:auto}
+.login-card h1{font-size:20px;font-weight:800;color:#0D2137;margin-bottom:4px}
+.login-card p{font-size:13px;color:#888;margin-bottom:28px}
+.login-card .field{width:100%;padding:13px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;transition:border 0.2s;margin-bottom:14px;font-family:inherit}
+.login-card .field:focus{border-color:#1B4965}
+.login-card .submit-btn{width:100%;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#0D2137,#1B4965);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:opacity 0.2s;margin-top:4px}
+.login-card .submit-btn:hover{opacity:0.9}
+.login-card .error{color:#F44336;font-size:12px;margin-bottom:10px;min-height:16px}
+.login-card .user-hint{margin-top:20px;padding:14px;background:#F7F8FA;border-radius:10px;text-align:left;font-size:11px;color:#888;line-height:1.7}
+.login-card .user-hint b{color:#555}
+
+.app{display:flex;flex-direction:column;min-height:100vh}
+.app-header{background:linear-gradient(135deg,#0D2137 0%,#1B4965 100%);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-header .left{display:flex;align-items:center;gap:12px}
+.app-header .logo-box{width:42px;height:42px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.15)}
+.app-header h1{font-size:18px;font-weight:700}
+.app-header .sub{font-size:11px;opacity:0.6}
+.app-header .right{display:flex;align-items:center;gap:10px}
+.app-header .hbtn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px;transition:background 0.15s}
+.app-header .hbtn:hover{background:rgba(255,255,255,0.22)}
+.user-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600}
+.role-admin{background:rgba(76,175,80,0.2);color:#A5D6A7}
+.role-qualite{background:rgba(33,150,243,0.2);color:#90CAF9}
+.role-maintenance{background:rgba(255,152,0,0.2);color:#FFCC80}
+
+.main-frame{flex:1;border:none;width:100%;height:calc(100vh - 58px)}
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:900px;width:100%}
+.cards-grid.single{grid-template-columns:1fr;max-width:460px}
+.pcard{background:#fff;border-radius:16px;padding:36px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:2px solid transparent;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden}
+.pcard:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.1);border-color:#1B4965}
+.pcard.disabled{opacity:0.35;pointer-events:none;filter:grayscale(0.5)}
+.pcard .bar{position:absolute;top:0;left:0;right:0;height:4px}
+.pcard h3{font-size:20px;font-weight:800;color:#0D2137;margin-bottom:8px}
+.pcard p{font-size:13px;color:#666;line-height:1.6;margin-bottom:20px}
+.pcard .go{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:10px;color:#fff;font-size:13px;font-weight:700}
+.pcard .lock-msg{font-size:11px;color:#999;text-align:center;padding:11px;background:#f5f5f5;border-radius:10px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ─── USERS DATABASE ──────────────────────────────────────────────────────
+var DEFAULT_USERS = [
+  {id:"admin",nom:"Administrateur",email:"admin@spr.ma",role:"admin",hash:"76d47cb8135a723cb0914af60e4c1036caf30e3e3fa0ebd2108611399dfc9dee"},
+  {id:"qualite",nom:"Responsable Qualité",email:"qualite@spr.ma",role:"resp_qualite",hash:"2817f39a0b06053cf1e3ec6588ec9d10d0295809e061d5eab91b38ed20a9dd96"},
+  {id:"maintenance",nom:"Responsable Maintenance",email:"maintenance@spr.ma",role:"resp_maintenance",hash:"cc459a9a61e4d0bbc0915c188cb6e9f2a19042c7d997c3c5ea1d1ffd3768a886"},
+  {id:"assistant",nom:"Assistant Qualité",email:"assistant@spr.ma",role:"asst_qualite",hash:"2817f39a0b06053cf1e3ec6588ec9d10d0295809e061d5eab91b38ed20a9dd96"}
+];
+var SUPABASE_URL="https://qtyhioqciyzxraonxlwk.supabase.co";
+var SUPABASE_KEY="sb_publishable_85ZuF9aFqxzBI6l0KncHUA_GSFUyDOL";
+var SYNC_ENABLED=SUPABASE_URL&&SUPABASE_KEY;
+var APP_SALT="ps_spr_pharmashield_2026";
+
+var USERS=(function(){try{var d=localStorage.getItem("pharmashield_users");return d?JSON.parse(d):DEFAULT_USERS;}catch(x){return DEFAULT_USERS;}})();
+function saveUsers(){
+  localStorage.setItem("pharmashield_users",JSON.stringify(USERS));
+}
+
+var PERM_RUBRIQUES=[
+  {id:"enregistreurs",nom:"Enregistreurs"},
+  {id:"equip_interm",nom:"Equip. Intermediaires"},
+  {id:"documents",nom:"Documents Prestataires"},
+  {id:"parc_auto",nom:"Parc Auto / Vehicules"},
+  {id:"levage",nom:"Moyens de Levage"},
+  {id:"infrastructure",nom:"Infrastructure"},
+  {id:"interventions",nom:"Interventions"},
+  {id:"import_export",nom:"Import / Export"},
+  {id:"corbeille",nom:"Corbeille"},
+  {id:"parametres",nom:"Parametres Societe"},
+  {id:"administration",nom:"Administration"}
+];
+var PERM_LEVELS=["Complet","Ecriture","Lecture","—"];
+var DEFAULT_PERMS={
+  resp_qualite:{enregistreurs:"Complet",equip_interm:"Complet",documents:"Complet",parc_auto:"Lecture",levage:"Lecture",infrastructure:"Lecture",interventions:"Lecture",import_export:"Ecriture",corbeille:"Complet",parametres:"—",administration:"—"},
+  asst_qualite:{enregistreurs:"Ecriture",equip_interm:"Ecriture",documents:"Ecriture",parc_auto:"Lecture",levage:"Lecture",infrastructure:"Lecture",interventions:"Lecture",import_export:"Lecture",corbeille:"Lecture",parametres:"—",administration:"—"},
+  resp_maintenance:{enregistreurs:"—",equip_interm:"—",documents:"—",parc_auto:"Complet",levage:"Complet",infrastructure:"Complet",interventions:"Complet",import_export:"Ecriture",corbeille:"Complet",parametres:"—",administration:"—"}
+};
+var PERMS=(function(){try{var d=localStorage.getItem("pharmashield_perms");return d?JSON.parse(d):DEFAULT_PERMS;}catch(x){return DEFAULT_PERMS;}})();
+function savePerms(){
+  localStorage.setItem("pharmashield_perms",JSON.stringify(PERMS));
+  if(SYNC_ENABLED)cloudSaveConfig("pharmashield_perms",PERMS);
+}
+
+function cloudSaveConfig(id,data){
+  try{
+    fetch(SUPABASE_URL+"/rest/v1/data_store",{
+      method:"POST",
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({id:id,module:"shared",data:data})
+    });
+  }catch(x){}
+}
+
+function cloudLoadConfig(callback){
+  if(!SYNC_ENABLED){callback(null);return;}
+  fetch(SUPABASE_URL+"/rest/v1/data_store?id=eq.pharmashield_perms&select=id,data",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(rows){
+    var map={};rows.forEach(function(r){map[r.id]=r.data;});
+    callback(map);
+  }).catch(function(){callback(null);});
+}
+
+// Sync perms from Supabase on page load (users managed locally only)
+cloudLoadConfig(function(map){
+  if(!map)return;
+  if(map.pharmashield_perms&&typeof map.pharmashield_perms==="object"){
+    Object.keys(map.pharmashield_perms).forEach(function(k){PERMS[k]=map.pharmashield_perms[k];});
+    localStorage.setItem("pharmashield_perms",JSON.stringify(PERMS));
+  }
+});
+
+var defined=false;
+function App(){
+  var ls=React.useState(function(){
+    var s=sessionStorage.getItem("ps_user");
+    return s?JSON.parse(s):null;
+  });
+  var user=ls[0];var setUser=ls[1];
+  var us=React.useState("");var username=us[0];var setUsername=us[1];
+  var ps=React.useState("");var pwd=ps[0];var setPwd=ps[1];
+  var es=React.useState("");var err=es[0];var setErr=es[1];
+  var vs=React.useState("portal");var view=vs[0];var setView=vs[1];
+
+  // Admin state (must be top-level, not inside conditionals)
+  var adminUsers=React.useState(USERS);var aUsers=adminUsers[0];var setAUsers=adminUsers[1];
+  var adminModal=React.useState(null);var aModal=adminModal[0];var setAModal=adminModal[1];
+  var adminEd=React.useState({});var aEd=adminEd[0];var setAEd=adminEd[1];
+  var adminIdx=React.useState(-1);var aIdx=adminIdx[0];var setAIdx=adminIdx[1];
+  var adminMsg=React.useState("");var aMsg=adminMsg[0];var setAMsg=adminMsg[1];
+
+  function hashSHA256(str){
+    if(window.crypto&&window.crypto.subtle){
+      var enc=new TextEncoder().encode(str);
+      return crypto.subtle.digest("SHA-256",enc).then(function(buf){
+        return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join("");
+      });
+    }
+    return new Promise(function(resolve){
+      function sha256js(msg){
+        function rr(n,x){return(x>>>n)|(x<<(32-n));}
+        var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+        var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+        var b=[];for(var i=0;i<msg.length;i++){var c=msg.charCodeAt(i);if(c<128)b.push(c);else if(c<2048){b.push(192|(c>>6));b.push(128|(c&63));}else{b.push(224|(c>>12));b.push(128|((c>>6)&63));b.push(128|(c&63));}}
+        var bitLen=b.length*8;b.push(0x80);while(b.length%64!==56)b.push(0);
+        b.push(0,0,0,0);
+        b.push((bitLen>>>24)&0xff,(bitLen>>>16)&0xff,(bitLen>>>8)&0xff,bitLen&0xff);
+        for(var off=0;off<b.length;off+=64){
+          var w=[];for(var i=0;i<16;i++)w[i]=((b[off+i*4]<<24)|(b[off+i*4+1]<<16)|(b[off+i*4+2]<<8)|b[off+i*4+3])>>>0;
+          for(var i=16;i<64;i++){var s0=rr(7,w[i-15])^rr(18,w[i-15])^(w[i-15]>>>3);var s1=rr(17,w[i-2])^rr(19,w[i-2])^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;}
+          var a=H[0],hb=H[1],hc=H[2],d=H[3],he=H[4],f=H[5],g=H[6],h=H[7];
+          for(var i=0;i<64;i++){var S1=rr(6,he)^rr(11,he)^rr(25,he);var ch=(he&f)^((~he)&g);var t1=(h+S1+ch+K[i]+w[i])>>>0;var S0=rr(2,a)^rr(13,a)^rr(22,a);var maj=(a&hb)^(a&hc)^(hb&hc);var t2=(S0+maj)>>>0;h=g;g=f;f=he;he=(d+t1)>>>0;d=hc;hc=hb;hb=a;a=(t1+t2)>>>0;}
+          H[0]=(H[0]+a)>>>0;H[1]=(H[1]+hb)>>>0;H[2]=(H[2]+hc)>>>0;H[3]=(H[3]+d)>>>0;H[4]=(H[4]+he)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+        }
+        return H.map(function(v){return v.toString(16).padStart(8,"0");}).join("");
+      }
+      resolve(sha256js(str));
+    });
+  }
+
+  function doLogin(){
+    if(!username||!pwd){setErr("Veuillez remplir tous les champs");return;}
+    hashSHA256(APP_SALT+pwd).then(function(saltedHash){
+      var found=USERS.find(function(u){return (u.id===username||u.email===username)&&u.hash===saltedHash;});
+      if(found){
+        var userData={id:found.id,nom:found.nom,email:found.email,role:found.role};
+        sessionStorage.setItem("ps_user",JSON.stringify(userData));
+        localStorage.setItem("ps_user",JSON.stringify(userData));
+        setUser(userData);setErr("");
+        return;
+      }
+      // Migration automatique : anciens comptes sans sel → mise à jour transparente au premier login
+      hashSHA256(pwd).then(function(legacyHash){
+        var legacy=USERS.find(function(u){return (u.id===username||u.email===username)&&u.hash===legacyHash;});
+        if(legacy){
+          legacy.hash=saltedHash;
+          saveUsers();
+          var userData={id:legacy.id,nom:legacy.nom,email:legacy.email,role:legacy.role};
+          sessionStorage.setItem("ps_user",JSON.stringify(userData));
+          localStorage.setItem("ps_user",JSON.stringify(userData));
+          setUser(userData);setErr("");
+        }else{setErr("Identifiant ou mot de passe incorrect");}
+      });
+    });
+  }
+
+  function doLogout(){sessionStorage.removeItem("ps_user");localStorage.removeItem("ps_user");setUser(null);setView("portal");setPwd("");setUsername("");}
+
+  function onKey(ev){if(ev.key==="Enter")doLogin();}
+
+  function canAccess(module){
+    if(!user)return false;
+    if(user.role==="admin"||user.role==="resp_qualite"||user.role==="asst_qualite")return true;
+    if(user.role==="resp_maintenance"&&module==="maintenance")return true;
+    return false;
+  }
+
+  var roleLabels={"admin":"Administrateur","resp_qualite":"Resp. Qualité","asst_qualite":"Asst. Qualité","resp_maintenance":"Resp. Maintenance"};
+  var roleClass={"admin":"role-admin","resp_qualite":"role-qualite","asst_qualite":"role-qualite","resp_maintenance":"role-maintenance"};
+
+  var logo=React.createElement("img",{src:"logo-sprl.jpg",alt:"SPRL",style:{width:38,height:30,objectFit:"contain"}});
+
+  var e=React.createElement;
+
+  // ═══ LOGIN ═══
+  if(!user){
+    return e("div",{className:"login-bg"},
+      e("div",{className:"login-card"},
+        e("div",{style:{width:240,margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center"}},
+          e("img",{src:"logo-sprl.jpg",alt:"SPRL",style:{width:"100%",height:"auto"}})),
+        e("p",{style:{fontSize:13,fontWeight:600,color:"#1B4965",marginBottom:24}},"PharmaSHIELD — Maintenance & Métrologie"),
+        e("input",{className:"field",type:"text",placeholder:"Identifiant ou email",value:username,onChange:function(ev){setUsername(ev.target.value);setErr("");},onKeyDown:onKey}),
+        e("input",{className:"field",type:"password",placeholder:"Mot de passe",value:pwd,onChange:function(ev){setPwd(ev.target.value);setErr("");},onKeyDown:onKey}),
+        e("div",{className:"error"},err),
+        e("button",{className:"submit-btn",onClick:doLogin},"Se connecter")));
+  }
+
+  // ═══ PORTAL ═══
+  if(view==="portal"){
+    var canMetro=canAccess("metrologie");
+    var canMaint=canAccess("maintenance");
+    var onlyMaint=!canMetro&&canMaint;
+
+    return e("div",{className:"app"},
+      e("header",{className:"app-header"},
+        e("div",{className:"left"},
+          e("div",{className:"logo-box"},logo),
+          e("div",null,e("h1",null,"SPRL"),e("div",{className:"sub"},"PHARMASHIELD — GMAO & MÉTROLOGIE"))),
+        e("div",{className:"right"},
+          e("span",{className:"user-badge "+roleClass[user.role]},user.nom," — ",roleLabels[user.role]),
+          e("button",{className:"hbtn",onClick:doLogout},"Déconnexion"))),
+      e("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:40}},
+        e("div",{className:"cards-grid"},
+
+          canMetro?e("div",{className:"pcard",onClick:function(){setView("metrologie");}},
+            e("div",{className:"bar",style:{background:"linear-gradient(90deg,#1B4965,#5BC0BE)"}}),
+            e("div",{style:{width:56,height:56,borderRadius:14,background:"#EEF4FF",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}},
+              e("svg",{width:28,height:28,viewBox:"0 0 24 24",fill:"none",stroke:"#1B4965",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"}))),
+            e("h3",null,"Étalonnage & Métrologie"),
+            e("p",null,"Gestion métrologique : enregistreurs température/humidité, planning étalonnage, équipements intermédiaires, maintenance trimestrielle."),
+            e("div",{className:"go",style:{background:"#1B4965"}},"Accéder à la Métrologie →"))
+          :e("div",{className:"pcard disabled"},
+            e("div",{className:"bar",style:{background:"#ccc"}}),
+            e("div",{style:{width:56,height:56,borderRadius:14,background:"#f0f0f0",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}},
+              e("svg",{width:28,height:28,viewBox:"0 0 24 24",fill:"none",stroke:"#999",strokeWidth:"2"},e("path",{d:"M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"}))),
+            e("h3",null,"Étalonnage & Métrologie"),
+            e("p",null,"Module réservé à l'administrateur et au responsable qualité."),
+            e("div",{className:"lock-msg"},"Accès restreint")),
+
+          e("div",{className:"pcard",onClick:function(){setView("maintenance");}},
+            e("div",{className:"bar",style:{background:"linear-gradient(90deg,#E65100,#FF9800)"}}),
+            e("div",{style:{width:56,height:56,borderRadius:14,background:"#FFF3E0",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}},
+              e("svg",{width:28,height:28,viewBox:"0 0 24 24",fill:"none",stroke:"#E65100",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"}))),
+            e("h3",null,"Maintenance & Parc Auto"),
+            e("p",null,"GMAO complète : parc automobile, moyens de levage, infrastructure, interventions préventives/correctives, historique, statistiques."),
+            e("div",{className:"go",style:{background:"#E65100"}},"Accéder à la Maintenance →")),
+
+          user.role==="admin"?e("div",{className:"pcard",onClick:function(){setView("admin");},style:{gridColumn:"1/-1"}},
+            e("div",{className:"bar",style:{background:"linear-gradient(90deg,#4CAF50,#81C784)"}}),
+            e("div",{style:{width:56,height:56,borderRadius:14,background:"#E8F5E9",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}},
+              e("svg",{width:28,height:28,viewBox:"0 0 24 24",fill:"none",stroke:"#2E7D32",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"},
+                e("path",{d:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"}),e("circle",{cx:9,cy:7,r:4}),e("path",{d:"M23 21v-2a4 4 0 00-3-3.87"}),e("path",{d:"M16 3.13a4 4 0 010 7.75"}))),
+            e("h3",null,"Administration"),
+            e("p",null,"Gestion des utilisateurs, mots de passe, permissions."),
+            e("div",{className:"go",style:{background:"#2E7D32"}},"Administrer →")):null
+        )));
+  }
+
+  // ═══ ADMINISTRATION ═══
+  if(view==="admin"){
+    if(user.role!=="admin"){setView("portal");return null;}
+
+    function openUserForm(idx){
+      if(idx>=0){setAEd({id:aUsers[idx].id,nom:aUsers[idx].nom,email:aUsers[idx].email,role:aUsers[idx].role,newPwd:""});setAIdx(idx);}
+      else{setAEd({id:"",nom:"",email:"",role:"resp_qualite",newPwd:""});setAIdx(-1);}
+      setAModal("user");
+    }
+
+    function saveUser(){
+      if(!aEd.id||!aEd.nom){setAMsg("Login et nom obligatoires");return;}
+      if(aIdx<0&&!aEd.newPwd){setAMsg("Mot de passe obligatoire pour un nouvel utilisateur");return;}
+      if(aIdx<0&&aUsers.find(function(u){return u.id===aEd.id;})){setAMsg("Ce login existe deja");return;}
+
+      if(aEd.newPwd){
+        hashSHA256(APP_SALT+aEd.newPwd).then(function(hash){
+          var u=aUsers.slice();
+          var userData={id:aEd.id,nom:aEd.nom,email:aEd.email,role:aEd.role,hash:hash};
+          if(aIdx>=0)u[aIdx]=userData;else u.push(userData);
+          USERS.length=0;u.forEach(function(x){USERS.push(x);});
+          setAUsers(u);saveUsers();setAModal(null);setAMsg("");
+        });
+      } else {
+        var u=aUsers.slice();
+        u[aIdx]=Object.assign({},u[aIdx],{nom:aEd.nom,email:aEd.email,role:aEd.role});
+        USERS.length=0;u.forEach(function(x){USERS.push(x);});
+        setAUsers(u);saveUsers();setAModal(null);setAMsg("");
+      }
+    }
+
+    function deleteUser(idx){
+      if(aUsers[idx].role==="admin"&&aUsers.filter(function(u){return u.role==="admin";}).length<=1){setAMsg("Impossible de supprimer le dernier administrateur");setTimeout(function(){setAMsg("");},3000);return;}
+      var u=aUsers.filter(function(_,i){return i!==idx;});
+      USERS.length=0;u.forEach(function(x){USERS.push(x);});
+      setAUsers(u);saveUsers();
+    }
+
+    var roleLabelsAdmin={"admin":"Administrateur","resp_qualite":"Resp. Qualite","asst_qualite":"Asst. Qualite","resp_maintenance":"Resp. Maintenance"};
+    var roleBg={"admin":"#E8F5E9","resp_qualite":"#E3F2FD","asst_qualite":"#E8EAF6","resp_maintenance":"#FFF3E0"};
+    var roleColor={"admin":"#2E7D32","resp_qualite":"#1565C0","asst_qualite":"#5C6BC0","resp_maintenance":"#E65100"};
+
+    return e("div",{className:"app"},
+      e("header",{className:"app-header"},
+        e("div",{className:"left"},
+          e("div",{className:"logo-box",style:{cursor:"pointer"},onClick:function(){setView("portal");}},logo),
+          e("div",null,e("h1",null,"SPRL — Administration"),e("div",{className:"sub"},"GESTION DES UTILISATEURS"))),
+        e("div",{className:"right"},
+          e("button",{className:"hbtn",onClick:function(){setView("portal");}},"← Portail"),
+          e("button",{className:"hbtn",onClick:doLogout},"Deconnexion"))),
+
+      e("div",{style:{padding:"40px",maxWidth:800,margin:"0 auto"}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}},
+          e("h2",{style:{fontSize:22,fontWeight:700,color:"#0D2137"}},"Utilisateurs"),
+          e("button",{style:{background:"#2E7D32",color:"#fff",border:"none",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:8},onClick:function(){openUserForm(-1);}},"+ Ajouter un utilisateur")),
+
+        aMsg?e("div",{style:{background:"#FFF3E0",border:"1px solid #FFE082",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:13,color:"#E65100"}},aMsg):null,
+
+        e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"hidden"}},
+          e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+            e("thead",null,e("tr",{style:{background:"linear-gradient(135deg,#0D2137,#1B4965)"}},
+              ["Login","Nom","Email","Role","Actions"].map(function(h){
+                return e("th",{key:h,style:{padding:"14px 16px",textAlign:"left",fontWeight:700,color:"#fff",fontSize:11,textTransform:"uppercase"}},h);}))),
+            e("tbody",null,aUsers.map(function(u,i){
+              return e("tr",{key:u.id,style:{borderBottom:"1px solid #f0f0f0",background:i%2===0?"#fff":"#FAFBFC"}},
+                e("td",{style:{padding:"14px 16px",fontWeight:700,color:"#1B4965"}},u.id),
+                e("td",{style:{padding:"14px 16px"}},u.nom),
+                e("td",{style:{padding:"14px 16px",color:"#666"}},u.email||"—"),
+                e("td",{style:{padding:"14px 16px"}},e("span",{style:{background:roleBg[u.role]||"#eee",color:roleColor[u.role]||"#666",padding:"4px 12px",borderRadius:12,fontSize:11,fontWeight:700}},roleLabelsAdmin[u.role]||u.role)),
+                e("td",{style:{padding:"14px 16px"}},
+                  e("div",{style:{display:"flex",gap:8}},
+                    e("button",{onClick:function(){openUserForm(i);},style:{background:"#EEF4FF",border:"1px solid #90CAF9",borderRadius:6,padding:"5px 12px",fontSize:11,cursor:"pointer",color:"#1B4965",fontWeight:600}},"Modifier"),
+                    e("button",{onClick:function(){deleteUser(i);},style:{background:"#FFEBEE",border:"1px solid #EF9A9A",borderRadius:6,padding:"5px 12px",fontSize:11,cursor:"pointer",color:"#C62828",fontWeight:600}},"Supprimer"))));
+            })))),
+
+        // Tableau des permissions (modifiable)
+        e("div",{style:{marginTop:32}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+            e("h2",{style:{fontSize:22,fontWeight:700,color:"#0D2137"}},"Permissions par rubrique"),
+            e("button",{style:{background:"#E8EBF0",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontWeight:600,color:"#555"},onClick:function(){
+              Object.keys(DEFAULT_PERMS).forEach(function(k){PERMS[k]=Object.assign({},DEFAULT_PERMS[k]);});
+              savePerms();setAMsg("Permissions reinitialises par defaut");setTimeout(function(){setAMsg("");},2500);setAUsers(USERS.slice());
+            }},"Reinitialiser par defaut")),
+          e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+            (function(){
+              var editRoles=["resp_qualite","asst_qualite","resp_maintenance"];
+              var editRolesH=["Resp. Qualite","Asst. Qualite","Resp. Maint."];
+              var permColors={"Complet":{bg:"#E8F5E9",c:"#2E7D32"},"Ecriture":{bg:"#E3F2FD",c:"#1565C0"},"Lecture":{bg:"#FFF3E0",c:"#E65100"},"—":{bg:"#ECEFF1",c:"#90A4AE"}};
+              return e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+                e("thead",null,e("tr",{style:{background:"linear-gradient(135deg,#0D2137,#1B4965)"}},
+                  e("th",{style:{padding:"12px 16px",textAlign:"left",fontWeight:700,color:"#fff",fontSize:11,textTransform:"uppercase"}},"Rubrique"),
+                  e("th",{style:{padding:"12px 12px",textAlign:"center",fontWeight:700,color:"#fff",fontSize:10,textTransform:"uppercase"}},"Admin"),
+                  editRolesH.map(function(r,i){return e("th",{key:i,style:{padding:"12px 12px",textAlign:"center",fontWeight:700,color:"#fff",fontSize:10,textTransform:"uppercase"}},r);}))),
+                e("tbody",null,PERM_RUBRIQUES.map(function(rub,ri){
+                  return e("tr",{key:ri,style:{borderBottom:"1px solid #f0f0f0",background:ri%2===0?"#fff":"#FAFBFC"}},
+                    e("td",{style:{padding:"10px 16px",fontWeight:600,color:"#0D2137"}},rub.nom),
+                    e("td",{style:{padding:"10px 12px",textAlign:"center"}},
+                      e("span",{style:{background:"#E8F5E9",color:"#2E7D32",padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:700}},"Complet")),
+                    editRoles.map(function(role,pi){
+                      var p=(PERMS[role]&&PERMS[role][rub.id])||"—";
+                      var pc=permColors[p]||permColors["—"];
+                      return e("td",{key:pi,style:{padding:"10px 12px",textAlign:"center"}},
+                        e("span",{onClick:function(){
+                          var idx=PERM_LEVELS.indexOf(p);
+                          var next=PERM_LEVELS[(idx+1)%PERM_LEVELS.length];
+                          if(!PERMS[role])PERMS[role]={};
+                          PERMS[role][rub.id]=next;
+                          savePerms();
+                          setAUsers(USERS.slice());
+                        },style:{background:pc.bg,color:pc.c,padding:"4px 12px",borderRadius:12,fontSize:10,fontWeight:700,cursor:"pointer",border:"2px solid transparent",transition:"all 0.15s",display:"inline-block",userSelect:"none"},
+                        title:"Cliquer pour changer : RW → Lecture → Import → Aucun"},p));
+                    }));
+                })));
+            })()),
+          e("div",{style:{marginTop:12,padding:"10px 16px",background:"#EEF4FF",borderRadius:8,fontSize:11,color:"#1B4965"}},
+            "Cliquez sur une permission pour la changer. ",e("b",null,"Complet")," = Lire + Ecrire + Supprimer | ",e("b",null,"Ecriture")," = Lire + Ecrire (pas de suppression) | ",e("b",null,"Lecture")," = Consultation uniquement | ",e("b",null,"—")," = Aucun acces")),
+
+        // Modal ajout/modif utilisateur
+        aModal==="user"?e("div",{style:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}},
+          e("div",{style:{background:"#fff",borderRadius:14,padding:28,width:460,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"},onClick:function(ev){ev.stopPropagation();}},
+            e("h3",{style:{fontSize:18,fontWeight:700,color:"#0D2137",marginBottom:20}},aIdx>=0?"Modifier l'utilisateur":"Nouvel utilisateur"),
+            e("div",{style:{display:"grid",gap:12}},
+              e("div",null,e("label",{style:{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase"}},"LOGIN *"),
+                e("input",{value:aEd.id,onChange:function(ev){setAEd(Object.assign({},aEd,{id:ev.target.value}));},disabled:aIdx>=0,style:{width:"100%",padding:"10px 14px",border:"1px solid #ddd",borderRadius:8,fontSize:13,marginTop:4,boxSizing:"border-box",background:aIdx>=0?"#f5f5f5":"#fff"}})),
+              e("div",null,e("label",{style:{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase"}},"NOM COMPLET *"),
+                e("input",{value:aEd.nom,onChange:function(ev){setAEd(Object.assign({},aEd,{nom:ev.target.value}));},style:{width:"100%",padding:"10px 14px",border:"1px solid #ddd",borderRadius:8,fontSize:13,marginTop:4,boxSizing:"border-box"}})),
+              e("div",null,e("label",{style:{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase"}},"EMAIL"),
+                e("input",{value:aEd.email,onChange:function(ev){setAEd(Object.assign({},aEd,{email:ev.target.value}));},style:{width:"100%",padding:"10px 14px",border:"1px solid #ddd",borderRadius:8,fontSize:13,marginTop:4,boxSizing:"border-box"}})),
+              e("div",null,e("label",{style:{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase"}},"ROLE *"),
+                e("select",{value:aEd.role,onChange:function(ev){setAEd(Object.assign({},aEd,{role:ev.target.value}));},style:{width:"100%",padding:"10px 14px",border:"1px solid #ddd",borderRadius:8,fontSize:13,marginTop:4,boxSizing:"border-box"}},
+                  e("option",{value:"admin"},"Administrateur"),
+                  e("option",{value:"resp_qualite"},"Responsable Qualite"),
+                  e("option",{value:"asst_qualite"},"Assistant Qualite"),
+                  e("option",{value:"resp_maintenance"},"Responsable Maintenance"))),
+              e("div",null,e("label",{style:{fontSize:11,fontWeight:700,color:"#888",textTransform:"uppercase"}},aIdx>=0?"NOUVEAU MOT DE PASSE (laisser vide pour ne pas changer)":"MOT DE PASSE *"),
+                e("input",{type:"password",value:aEd.newPwd,onChange:function(ev){setAEd(Object.assign({},aEd,{newPwd:ev.target.value}));},placeholder:aIdx>=0?"Laisser vide pour ne pas changer":"",style:{width:"100%",padding:"10px 14px",border:"1px solid #ddd",borderRadius:8,fontSize:13,marginTop:4,boxSizing:"border-box"}}))),
+            aMsg?e("div",{style:{color:"#F44336",fontSize:12,marginTop:8}},aMsg):null,
+            e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+              e("button",{onClick:function(){setAModal(null);setAMsg("");},style:{background:"#E8EBF0",border:"none",borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontWeight:600}},"Annuler"),
+              e("button",{onClick:saveUser,style:{background:"#2E7D32",color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontWeight:700}},"Enregistrer")))):null
+      ));
+  }
+
+  // ═══ ACCESS CHECK ═══
+  if(!canAccess(view)){setView("portal");return null;}
+
+  // ═══ MODULE VIEW ═══
+  var moduleSrc=(view==="metrologie"?"metrologie.html":"maintenance.html")+"?embed=1&role="+user.role;
+  var canSwitch=canAccess(view==="metrologie"?"maintenance":"metrologie");
+
+  return e("div",{className:"app"},
+    e("header",{className:"app-header"},
+      e("div",{className:"left"},
+        e("div",{className:"logo-box",style:{cursor:"pointer"},onClick:function(){setView("portal");},title:"Retour au portail"},logo),
+        e("div",null,
+          e("h1",null,"SPRL — "+(view==="metrologie"?"Métrologie":"Maintenance")),
+          e("div",{className:"sub"},view==="metrologie"?"GESTION MÉTROLOGIQUE — PCS07":"GESTION MAINTENANCE ASSISTÉE"))),
+      e("div",{className:"right"},
+        e("span",{className:"user-badge "+roleClass[user.role]},user.nom),
+        e("button",{className:"hbtn",onClick:function(){setView("portal");}},"← Portail"),
+        canSwitch?e("button",{className:"hbtn",onClick:function(){setView(view==="metrologie"?"maintenance":"metrologie");}},view==="metrologie"?"Maintenance →":"← Métrologie"):null,
+        e("button",{className:"hbtn",onClick:doLogout},"Déconnexion"))),
+    e("iframe",{src:moduleSrc,className:"main-frame",title:view}));
+}
+
+// ─── HASH COMPUTATION HELPER ────────────────────────────────────────────
+// Pour générer un hash avec le sel (à coller dans la console navigateur) :
+// crypto.subtle.digest("SHA-256",new TextEncoder().encode("ps_spr_pharmashield_2026"+"MOTDEPASSE")).then(b=>console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")))
+
+function boot(){
+  var s1=document.createElement("script");s1.src="https://unpkg.com/react@18/umd/react.production.min.js";s1.crossOrigin="anonymous";
+  s1.onload=function(){
+    var s2=document.createElement("script");s2.src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js";s2.crossOrigin="anonymous";
+    s2.onload=function(){ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));};
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+}
+boot();
+</script>
+</body>
+</html>

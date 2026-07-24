@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PharmaSHIELD — Maintenance & Parc Auto</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#F7F8FA;color:#1a1a2e}
+input,select,textarea,button{font-family:inherit}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-box{background:#fff;border-radius:14px;padding:28px;width:620px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;text-transform:uppercase;color:#888;font-weight:700;letter-spacing:0.04em}
+.form-group input,.form-group select,.form-group textarea{padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#E65100}
+.btn{padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.btn-primary{background:#E65100;color:#fff}.btn-primary:hover{background:#BF360C}
+.btn-success{background:#4CAF50;color:#fff}.btn-success:hover{background:#388E3C}
+.btn-danger{background:#F44336;color:#fff}.btn-danger:hover{background:#C62828}
+.btn-secondary{background:#E8EBF0;color:#555}.btn-secondary:hover{background:#ddd}
+.btn-icon{width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:1px solid #ddd;background:#fff;cursor:pointer;transition:all .15s}
+.btn-icon:hover{background:#FFF3E0;border-color:#E65100}
+.btn-icon.danger:hover{background:#FFEBEE;border-color:#F44336}
+.toast{position:fixed;bottom:24px;right:24px;background:#E65100;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:2000;box-shadow:0 4px 12px rgba(0,0,0,0.2);animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.etat-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table thead tr{background:#F7F8FA;border-bottom:2px solid #E8EBF0}
+.data-table th{padding:10px;text-align:left;font-weight:700;color:#0D2137;font-size:10px;text-transform:uppercase;white-space:nowrap}
+.data-table td{padding:9px 10px;border-bottom:1px solid #f3f3f3}
+.data-table tbody tr:hover{background:#FAFBFC}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+var e = React.createElement;
+var useState = React.useState;
+var useMemo = React.useMemo;
+var useEffect = React.useEffect;
+var useRef = React.useRef;
+
+// ─── DATA ───────────────────────────────────────────────────────────────
+var DEFAULT_VEHICULES = [
+  {id:"VEH-001",marque:"Renault",modele:"Kangoo",matricule:"31031 A10",chauffeur:"Mirri Allal",annee:2010,pf:6,km:444999,dateVidange:"",kmVidange:440000,prochaineVidange:450000,dateNettoyage:"",dispo:95,prochaineCT:"2026-08-15",prochaineVignette:"2026-12-01",prochaineAssurance:"2026-10-01"},
+  {id:"VEH-002",marque:"Renault",modele:"Dacia",matricule:"39174 A10",chauffeur:"Fadloune Moukhliss",annee:2016,pf:6,km:343651,dateVidange:"2026-05-04",kmVidange:343651,prochaineVidange:353651,dateNettoyage:"",dispo:92,prochaineCT:"2026-06-10",prochaineVignette:"2026-11-01",prochaineAssurance:"2026-09-01"},
+  {id:"VEH-003",marque:"Ford",modele:"L2 Transite",matricule:"42137 A10",chauffeur:"CHjar Aziz",annee:2017,pf:9,km:190137,dateVidange:"2026-02-21",kmVidange:190137,prochaineVidange:200137,dateNettoyage:"",dispo:94,prochaineCT:"2026-04-01",prochaineVignette:"2026-11-01",prochaineAssurance:"2026-08-01"},
+  {id:"VEH-004",marque:"Renault",modele:"Express",matricule:"49228A10",chauffeur:"Allate Hamid",annee:2021,pf:6,km:236540,dateVidange:"2026-01-01",kmVidange:236540,prochaineVidange:246540,dateNettoyage:"",dispo:96,prochaineCT:"2026-08-01",prochaineVignette:"2026-05-25",prochaineAssurance:"2026-12-01"},
+  {id:"VEH-005",marque:"Ford",modele:"L3 Transite",matricule:"46184 A10",chauffeur:"Omar",annee:2019,pf:9,km:254604,dateVidange:"2025-01-15",kmVidange:254604,prochaineVidange:264604,dateNettoyage:"",dispo:90,prochaineCT:"2026-07-01",prochaineVignette:"2026-03-01",prochaineAssurance:"2026-11-01"},
+  {id:"VEH-006",marque:"Renault",modele:"Kangoo",matricule:"45881A10",chauffeur:"Eladham Amine",annee:2019,pf:6,km:214813,dateVidange:"2026-01-29",kmVidange:214813,prochaineVidange:224813,dateNettoyage:"",dispo:94,prochaineCT:"2026-09-01",prochaineVignette:"2026-06-01",prochaineAssurance:"2026-12-01"},
+  {id:"VEH-007",marque:"Renault",modele:"Dacia",matricule:"39089 A10",chauffeur:"Loulijat Kacem",annee:2016,pf:6,km:346263,dateVidange:"2026-06-01",kmVidange:346263,prochaineVidange:356263,dateNettoyage:"",dispo:93,prochaineCT:"2026-10-01",prochaineVignette:"2026-07-01",prochaineAssurance:"2026-11-01"}
+];
+
+var DEFAULT_GERBEURS = [
+  {id:"GE1",type:"électrique",code:"GE1",emplacement:"RDC",etat:"Opérationnel",dernMaint:"2025-07-01",prochMaint:"2025-10-01",heures:1250,capacite:1000,batterie:"Bon",hydraulique:"Bon",chaine:"Bon",dateVGP:"2026-04-15",prochVGP:"2026-10-15"},
+  {id:"GE2",type:"électrique",code:"GE2",emplacement:"RDC",etat:"Opérationnel",dernMaint:"2025-05-15",prochMaint:"2025-08-15",heures:2100,capacite:1200,batterie:"Dégradé",hydraulique:"Bon",chaine:"Bon",dateVGP:"2025-12-01",prochVGP:"2026-06-01"},
+  {id:"GE3",type:"électrique",code:"GE3",emplacement:"RDC",etat:"En maintenance",dernMaint:"2025-03-02",prochMaint:"2025-06-02",heures:3800,capacite:1000,batterie:"À remplacer",hydraulique:"Défaillant",chaine:"À remplacer",dateVGP:"2025-09-01",prochVGP:"2026-03-01"},
+  {id:"GM1",type:"manuel",code:"GM1",emplacement:"Etage 3/Magasin 05",etat:"Opérationnel",dernMaint:"2025-06-03",prochMaint:"2025-12-03",heures:850,capacite:1500,batterie:"",hydraulique:"Bon",chaine:"Bon",dateVGP:"2026-03-15",prochVGP:"2026-09-15"},
+  {id:"GM2",type:"manuel",code:"GM2",emplacement:"Etage 3/Magasin 06",etat:"Opérationnel",dernMaint:"2025-06-04",prochMaint:"2025-12-04",heures:1650,capacite:1200,batterie:"",hydraulique:"À surveiller",chaine:"Usé",dateVGP:"2025-11-28",prochVGP:"2026-05-28"}
+];
+
+var DEFAULT_TRANSPALETTES = [
+  {id:"TM1-M3-01",code:"TM1-M3-01",emplacement:"Magasin N°3",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM1-M1-01",code:"TM1-M1-01",emplacement:"Magasin N°1",etat:"Opérationnel",probleme:"Câbles et pédales remplacés (03/2025)",date:"2025-03-15",dispo:100,hydraulique:"Bon"},
+  {id:"TM1-M1-02",code:"TM1-M1-02",emplacement:"Magasin N°1",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM1-M1-03",code:"TM1-M1-03",emplacement:"Magasin N°1",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM1-M1-04",code:"TM1-M1-04",emplacement:"Magasin N°1",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM3-M3-01",code:"TM3-M3-01",emplacement:"Magasin N°3",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM3-M3-02",code:"TM3-M3-02",emplacement:"Magasin N°3",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM3-M3-03",code:"TM3-M3-03",emplacement:"Magasin N°3",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM1-M4-01",code:"TM1-M4-01",emplacement:"Magasin N°4",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM2-M4-01",code:"TM2-M4-01",emplacement:"Magasin N°4",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM4-M4-01",code:"TM4-M4-01",emplacement:"Magasin N°4",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM5-M5-01",code:"TM5-M5-01",emplacement:"Magasin N°5",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM2-M5-01",code:"TM2-M5-01",emplacement:"Magasin N°5",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM6-M6-01",code:"TM6-M6-01",emplacement:"Magasin N°6",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM6-M6-02",code:"TM6-M6-02",emplacement:"Magasin N°6",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM6-M6-03",code:"TM6-M6-03",emplacement:"Magasin N°6",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"},
+  {id:"TM4-M6-01",code:"TM4-M6-01",emplacement:"Magasin N°6",etat:"Opérationnel",probleme:"RAS",date:"",dispo:100,hydraulique:"Bon"}
+];
+
+var DEFAULT_INTERVENTIONS = [
+  // ══════════════════════════════════════════════════════════════════════
+  // MAINTENANCE PRÉVENTIVE — Conformité BPD/GDP Pharmaceutique
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Parc Auto : vidanges selon plan constructeur (10 000 km) ──
+  {id:"PRV-001",date:"2025-06-10",equipement:"Véhicule",code:"31031 A10",lieu:"Parc auto",probleme:"Vidange périodique 10 000 km",action:"Vidange moteur 5W30, filtre huile, filtre air, contrôle freins, niveaux liquides",statut:"Résolu",dateRep:"2025-06-10",tech:"Garage agréé",type:"Préventive",cout:1570,duree:3},
+  {id:"PRV-002",date:"2025-05-04",equipement:"Véhicule",code:"39174 A10",lieu:"Parc auto",probleme:"Vidange périodique 10 000 km",action:"Vidange moteur, remplacement filtre huile + air, contrôle courroie",statut:"Résolu",dateRep:"2025-05-04",tech:"Garage agréé",type:"Préventive",cout:1450,duree:2.5},
+  {id:"PRV-003",date:"2025-02-21",equipement:"Véhicule",code:"42137 A10",lieu:"Parc auto",probleme:"Vidange périodique 10 000 km",action:"Vidange moteur, filtres, contrôle pneumatiques, freins",statut:"Résolu",dateRep:"2025-02-21",tech:"Garage agréé",type:"Préventive",cout:1650,duree:3},
+  {id:"PRV-004",date:"2026-01-29",equipement:"Véhicule",code:"45881A10",lieu:"Parc auto",probleme:"Vidange périodique 10 000 km",action:"Vidange moteur, filtres, contrôle batterie, éclairage",statut:"Résolu",dateRep:"2026-01-29",tech:"Garage agréé",type:"Préventive",cout:1480,duree:2.5},
+  // ── Gerbeurs : maintenance trimestrielle (BPD ch.3 — équipements manutention) ──
+  {id:"PRV-005",date:"2025-04-01",equipement:"Gerbeur électrique",code:"GE1",lieu:"RDC",probleme:"Maintenance trimestrielle T1 — Plan BPD",action:"Graissage axes et roulements, contrôle batterie (tension/densité), vérification freins, test arrêt d'urgence, contrôle visuel chaîne de levage",statut:"Résolu",dateRep:"2025-04-01",tech:"Mohamed Senhaji",type:"Préventive",cout:250,duree:2},
+  {id:"PRV-006",date:"2025-07-01",equipement:"Gerbeur électrique",code:"GE1",lieu:"RDC",probleme:"Maintenance trimestrielle T2 — Plan BPD",action:"Contrôle hydraulique (pression, fuites), remplacement filtre hydraulique, test levage charge nominale, graissage",statut:"Résolu",dateRep:"2025-07-01",tech:"Mohamed Senhaji",type:"Préventive",cout:400,duree:2.5},
+  {id:"PRV-007",date:"2025-05-15",equipement:"Gerbeur électrique",code:"GE2",lieu:"RDC",probleme:"Maintenance trimestrielle T2 — Plan BPD",action:"Contrôle hydraulique et joints, remplacement filtre, test charge, vérification klaxon et gyrophare",statut:"Résolu",dateRep:"2025-05-15",tech:"Mohamed Senhaji",type:"Préventive",cout:400,duree:2.5},
+  {id:"PRV-008",date:"2025-06-03",equipement:"Gerbeur manuel",code:"GM1",lieu:"Etage 3/Magasin 05",probleme:"Maintenance semestrielle — Plan BPD",action:"Graissage timon, contrôle roues polyuréthane, test hydraulique levée/descente, vérification soudures châssis",statut:"Résolu",dateRep:"2025-06-03",tech:"Mohamed Senhaji",type:"Préventive",cout:200,duree:1.5},
+  // ── Ascenseur : contrôle réglementaire semestriel (Arrêté marocain sécurité ascenseurs) ──
+  {id:"PRV-009",date:"2025-03-15",equipement:"Ascenseur",code:"INF-001",lieu:"Bâtiment A",probleme:"Contrôle réglementaire semestriel ascenseur",action:"Vérification câbles porteurs (usure <10%), contrôle frein de sécurité, test parachute, contrôle variateur, nettoyage cuvette, test interphones cabine, vérification photocellules portes",statut:"Résolu",dateRep:"2025-03-15",tech:"Otis Maroc",type:"Préventive",cout:2000,duree:4},
+  {id:"PRV-010",date:"2025-09-15",equipement:"Ascenseur",code:"INF-001",lieu:"Bâtiment A",probleme:"Contrôle réglementaire semestriel ascenseur",action:"Visite réglementaire complète, test surcharge, contrôle limiteur de vitesse, vérification éclairage de secours cabine",statut:"Planifié",dateRep:"",tech:"Otis Maroc",type:"Préventive",cout:2000,duree:4},
+  // ── Monte-charge : contrôle semestriel (obligation réglementaire appareils de levage) ──
+  {id:"PRV-011",date:"2025-06-01",equipement:"Monte-charge",code:"INF-002",lieu:"Magasin Central",probleme:"Contrôle semestriel monte-charge",action:"Test charge nominale 2T, contrôle câbles et poulies, vérification frein, test fins de course haut/bas, contrôle verrouillage portes palières",statut:"Résolu",dateRep:"2025-06-01",tech:"Kone Maroc",type:"Préventive",cout:1500,duree:3},
+  {id:"PRV-012",date:"2025-12-01",equipement:"Monte-charge",code:"INF-002",lieu:"Magasin Central",probleme:"Contrôle semestriel monte-charge",action:"Visite réglementaire complète, remplacement huile hydraulique, test sécurités",statut:"Planifié",dateRep:"",tech:"Kone Maroc",type:"Préventive",cout:1800,duree:4},
+  // ── Groupe électrogène : essentiel BPD (continuité chaîne du froid) ──
+  {id:"PRV-013",date:"2025-02-20",equipement:"Groupe électrogène",code:"INF-003",lieu:"Local technique RDC",probleme:"Entretien semestriel GE — Continuité chaîne du froid BPD",action:"Vidange huile moteur, remplacement filtre huile + gasoil + air, test démarrage automatique, vérification ATS (inverseur), contrôle alternateur, test en charge 1h, relevé paramètres",statut:"Résolu",dateRep:"2025-02-20",tech:"CAT Energy",type:"Préventive",cout:1800,duree:3},
+  {id:"PRV-014",date:"2025-08-20",equipement:"Groupe électrogène",code:"INF-003",lieu:"Local technique RDC",probleme:"Entretien semestriel GE — Continuité chaîne du froid BPD",action:"Vidange complète, filtres, test démarrage auto + manuel, essai transfert de charge, contrôle niveau carburant cuve",statut:"Planifié",dateRep:"",tech:"CAT Energy",type:"Préventive",cout:1800,duree:3},
+  // ── Test mensuel GE : obligatoire BPD (vérification démarrage auto) ──
+  {id:"PRV-015",date:"2025-05-01",equipement:"Groupe électrogène",code:"INF-003",lieu:"Local technique RDC",probleme:"Test mensuel démarrage GE — Exigence BPD",action:"Coupure secteur simulée, vérification démarrage automatique <10s, transfert charge, retour secteur, relevé compteur horaire",statut:"Résolu",dateRep:"2025-05-01",tech:"Mohamed Senhaji",type:"Préventive",cout:0,duree:0.5},
+  {id:"PRV-016",date:"2025-06-01",equipement:"Groupe électrogène",code:"INF-003",lieu:"Local technique RDC",probleme:"Test mensuel démarrage GE — Exigence BPD",action:"Test démarrage auto, transfert, retour — OK",statut:"Résolu",dateRep:"2025-06-01",tech:"Mohamed Senhaji",type:"Préventive",cout:0,duree:0.5},
+  // ── Climatisation : semestrielle (conservation médicaments 15-25°C, BPD ch.3) ──
+  {id:"PRV-017",date:"2025-05-01",equipement:"Climatisation",code:"INF-004",lieu:"2ème étage",probleme:"Maintenance semestrielle clim — Conservation médicaments BPD",action:"Nettoyage filtres, recharge gaz R410A, contrôle compresseur, vérification thermostat, mesure débit air, test alarme haute température",statut:"Résolu",dateRep:"2025-05-01",tech:"Froid Express",type:"Préventive",cout:1200,duree:3},
+  {id:"PRV-018",date:"2025-05-01",equipement:"Climatisation",code:"INF-005",lieu:"3ème étage",probleme:"Maintenance semestrielle clim — Conservation médicaments BPD",action:"Nettoyage filtres, contrôle compresseur, vérification thermostat, test alarme",statut:"Résolu",dateRep:"2025-05-01",tech:"Froid Express",type:"Préventive",cout:1100,duree:2.5},
+  // ── Système anti-incendie : annuelle + semestrielle (réglementation APSAD/NM) ──
+  {id:"PRV-019",date:"2025-01-10",equipement:"Système anti-incendie",code:"INF-012",lieu:"Tous niveaux",probleme:"Contrôle annuel extincteurs — Réglementation NM",action:"Vérification pression tous extincteurs (CO2/poudre/eau), contrôle plombage, date péremption, signalétique, test RIA (débit/pression), vérification détecteurs fumée, test alarme incendie",statut:"Résolu",dateRep:"2025-01-10",tech:"Sicli Maroc",type:"Préventive",cout:800,duree:5},
+  {id:"PRV-020",date:"2025-07-10",equipement:"Système anti-incendie",code:"INF-012",lieu:"Tous niveaux",probleme:"Contrôle semestriel sprinklers + RIA",action:"Test réseau sprinklers, vérification vannes, contrôle pompe surpression, test RIA, vérification signalétique évacuation",statut:"Planifié",dateRep:"",tech:"Sicli Maroc",type:"Préventive",cout:600,duree:3},
+  // ── Onduleur : semestrielle (protection données + supervision température BPD) ──
+  {id:"PRV-021",date:"2025-04-15",equipement:"Onduleur",code:"INF-013",lieu:"Salle informatique",probleme:"Contrôle semestriel onduleur — Continuité supervision BPD",action:"Test batteries (mesure capacité), vérification autonomie (objectif >30min), nettoyage ventilateurs, contrôle log erreurs, test basculement onduleur",statut:"Résolu",dateRep:"2025-04-15",tech:"APC/Schneider",type:"Préventive",cout:500,duree:2},
+  // ── Compresseur : trimestrielle ──
+  {id:"PRV-022",date:"2025-05-20",equipement:"Compresseur",code:"INF-014",lieu:"Local technique RDC",probleme:"Maintenance trimestrielle compresseur",action:"Remplacement filtre air, vidange huile, contrôle pression, purge condensat, vérification courroie",statut:"Résolu",dateRep:"2025-05-20",tech:"Atlas Copco Maroc",type:"Préventive",cout:450,duree:2},
+  // ── Quais : semestrielle ──
+  {id:"PRV-023",date:"2025-03-20",equipement:"Quai de chargement",code:"INF-008",lieu:"RDC Expédition",probleme:"Maintenance semestrielle quai + niveleur",action:"Contrôle vérins niveleur, graissage charnières, vérification butoirs, test lèvre de quai, contrôle étanchéité",statut:"Résolu",dateRep:"2025-03-20",tech:"Crawford Maroc",type:"Préventive",cout:700,duree:2},
+  {id:"PRV-024",date:"2025-03-20",equipement:"Quai de chargement",code:"INF-009",lieu:"RDC Expédition",probleme:"Maintenance semestrielle quai + niveleur",action:"Contrôle vérins, graissage, butoirs, lèvre — RAS",statut:"Résolu",dateRep:"2025-03-20",tech:"Crawford Maroc",type:"Préventive",cout:700,duree:2},
+  // ── Portes sectionnelles : semestrielle ──
+  {id:"PRV-025",date:"2025-02-15",equipement:"Porte sectionnelle",code:"INF-010",lieu:"Quai 1",probleme:"Maintenance semestrielle porte sectionnelle",action:"Contrôle ressorts de torsion, graissage rails et charnières, vérification câbles, test sécurité anti-chute, réglage fins de course",statut:"Résolu",dateRep:"2025-02-15",tech:"Hörmann Maroc",type:"Préventive",cout:550,duree:2},
+  {id:"PRV-026",date:"2025-02-15",equipement:"Porte sectionnelle",code:"INF-011",lieu:"Quai 2",probleme:"Maintenance semestrielle porte sectionnelle",action:"Contrôle ressorts, graissage, câbles, test anti-chute — RAS",statut:"Résolu",dateRep:"2025-02-15",tech:"Hörmann Maroc",type:"Préventive",cout:550,duree:2},
+  // ── Toboggans : semestrielle ──
+  {id:"PRV-027",date:"2025-04-10",equipement:"Toboggan",code:"INF-006",lieu:"Quai 1",probleme:"Maintenance semestrielle toboggan",action:"Graissage rails et rouleaux, contrôle soudures, vérification fixations, nettoyage",statut:"Résolu",dateRep:"2025-04-10",tech:"Interne",type:"Préventive",cout:150,duree:1.5},
+  {id:"PRV-028",date:"2025-04-10",equipement:"Toboggan",code:"INF-007",lieu:"Quai 2",probleme:"Maintenance semestrielle toboggan",action:"Graissage rails, contrôle rouleaux, vérification fixations — RAS",statut:"Résolu",dateRep:"2025-04-10",tech:"Interne",type:"Préventive",cout:150,duree:1.5},
+  // ── Transpalettes : contrôle annuel (BPD — intégrité des charges) ──
+  {id:"PRV-029",date:"2025-03-15",equipement:"Transpalette",code:"Tm1N°2",lieu:"Magasin 1",probleme:"Contrôle annuel transpalette",action:"Contrôle hydraulique, vérification roues, graissage timon, test levée/descente, remplacement câbles pédales",statut:"Résolu",dateRep:"2025-03-15",tech:"Mohamed Senhaji",type:"Préventive",cout:350,duree:2},
+
+  // ══════════════════════════════════════════════════════════════════════
+  // MAINTENANCE CORRECTIVE
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Gerbeurs ──
+  {id:"COR-001",date:"2025-01-15",equipement:"Gerbeur électrique",code:"GE1",lieu:"RDC",probleme:"Panne moteur — arrêt total",action:"Diagnostic moteur HS, remplacement moteur électrique 48V, tests fonctionnement, remise en service",statut:"Résolu",dateRep:"2025-01-16",tech:"BlueBird®",type:"Corrective",cout:1900,duree:4},
+  {id:"COR-002",date:"2025-02-10",equipement:"Gerbeur électrique",code:"GE2",lieu:"RDC",probleme:"Batterie ne tient plus la charge",action:"Test capacité batterie (< 40%), remplacement batterie 48V, test autonomie après charge complète",statut:"Résolu",dateRep:"2025-02-10",tech:"Mohamed Senhaji",type:"Corrective",cout:1000,duree:2},
+  {id:"COR-003",date:"2025-03-02",equipement:"Gerbeur électrique",code:"GE3",lieu:"RDC",probleme:"Direction difficile — fuite hydraulique",action:"Diagnostic circuit hydraulique, remplacement vérin de direction VH-100, purge circuit, test direction",statut:"En cours",dateRep:"",tech:"Mohamed Senhaji",type:"Corrective",cout:900,duree:3},
+  {id:"COR-004",date:"2025-03-03",equipement:"Gerbeur manuel",code:"GM1",lieu:"Etage 3/Magasin 05",probleme:"Roues polyuréthane usées — vibrations",action:"Remplacement roues polyuréthane (x2), contrôle roulements, test déplacement",statut:"Résolu",dateRep:"2025-03-03",tech:"Mohamed Senhaji",type:"Corrective",cout:500,duree:1.5},
+  {id:"COR-005",date:"2025-03-03",equipement:"Gerbeur manuel",code:"GM2",lieu:"Etage 3/Magasin 06",probleme:"Direction dure — ressorts cassés",action:"Remplacement ressorts de direction (x2), réglage, test maniabilité",statut:"Résolu",dateRep:"2025-03-04",tech:"BlueBird®",type:"Corrective",cout:360,duree:2},
+  // ── Infrastructure critique (impact chaîne du froid / BPD) ──
+  {id:"COR-006",date:"2025-04-20",equipement:"Climatisation",code:"INF-004",lieu:"2ème étage — Magasins médicaments",probleme:"Panne climatisation — Température hors plage (>25°C) — Alerte BPD",action:"Diagnostic: compresseur HS. Remplacement compresseur scroll, recharge gaz R410A, recalibrage thermostat, vérification retour T° dans plage 15-25°C, rapport de non-conformité T° renseigné",statut:"Résolu",dateRep:"2025-04-22",tech:"Froid Express",type:"Corrective",cout:3500,duree:6},
+  {id:"COR-007",date:"2025-05-12",equipement:"Ascenseur",code:"INF-001",lieu:"Bâtiment A — Étage 3",probleme:"Ascenseur bloqué entre étages — personnel coincé",action:"Intervention urgente, dégagement personne, diagnostic: câble tracteur effiloché. Remplacement câble, recalibrage variateur, test en charge, rapport sécurité",statut:"Résolu",dateRep:"2025-05-13",tech:"Otis Maroc",type:"Corrective",cout:4200,duree:8},
+  {id:"COR-008",date:"2025-06-05",equipement:"Groupe électrogène",code:"INF-003",lieu:"Local technique RDC",probleme:"Fuite gasoil au niveau du joint de culasse",action:"Diagnostic fuite, remplacement joint d'étanchéité culasse, resserrage, test démarrage + fonctionnement 30min, vérification absence fuite",statut:"En cours",dateRep:"",tech:"CAT Energy",type:"Corrective",cout:650,duree:2},
+  {id:"COR-009",date:"2025-04-05",equipement:"Porte sectionnelle",code:"INF-010",lieu:"Quai 1",probleme:"Porte ne remonte plus — ressort cassé",action:"Remplacement ressort de torsion, réglage tension, graissage, test ouverture/fermeture, vérification sécurité anti-chute",statut:"Résolu",dateRep:"2025-04-05",tech:"Hörmann Maroc",type:"Corrective",cout:800,duree:3},
+  {id:"COR-010",date:"2025-05-25",equipement:"Onduleur",code:"INF-013",lieu:"Salle informatique",probleme:"Alarme batterie — autonomie <5 min",action:"Diagnostic: 2 batteries sur 6 HS. Remplacement batteries, test autonomie (résultat: 42min), réinitialisation alarme",statut:"Résolu",dateRep:"2025-05-25",tech:"APC/Schneider",type:"Corrective",cout:1800,duree:2},
+  // ── Véhicules ──
+  {id:"COR-011",date:"2025-03-10",equipement:"Véhicule",code:"46184 A10",lieu:"En livraison — Route",probleme:"Crevaison pneu avant droit",action:"Remplacement pneu, contrôle géométrie, vérification pression 4 pneus",statut:"Résolu",dateRep:"2025-03-10",tech:"Garage externe",type:"Corrective",cout:450,duree:1},
+  {id:"COR-012",date:"2025-01-20",equipement:"Véhicule",code:"39089 A10",lieu:"Parc auto",probleme:"Batterie HS — véhicule ne démarre pas",action:"Test batterie (0V), remplacement batterie 12V, test alternateur, démarrage OK",statut:"Résolu",dateRep:"2025-01-20",tech:"Garage agréé",type:"Corrective",cout:750,duree:1},
+  // ── Transpalette ──
+  {id:"COR-013",date:"2025-02-25",equipement:"Transpalette",code:"Tm1N°2",lieu:"Magasin 1",probleme:"Câbles de commande et pédales défectueux",action:"Remplacement câbles de commande, réglage pédales, test fonctionnement levée/descente",statut:"Résolu",dateRep:"2025-03-15",tech:"Mohamed Senhaji",type:"Corrective",cout:280,duree:2},
+  // ── Quai ──
+  {id:"COR-014",date:"2025-06-12",equipement:"Quai de chargement",code:"INF-008",lieu:"RDC Expédition",probleme:"Vérin niveleur bloqué en position basse",action:"Diagnostic: fuite joint vérin. Remplacement joint torique, purge circuit, test levée/descente niveleur",statut:"En attente",dateRep:"",tech:"Crawford Maroc",type:"Corrective",cout:950,duree:2}
+];
+
+var DEFAULT_INFRASTRUCTURE = [
+  {id:"INF-001",categorie:"Ascenseur",designation:"Ascenseur principal Bâtiment A",emplacement:"Bâtiment A",marque:"Otis",modele:"Gen2",dateMiseService:"2015-03-01",etat:"Opérationnel",dernMaint:"2025-03-15",prochMaint:"2025-09-15",periodicite:"Semestrielle",prestataire:"Otis Maroc",contrat:"Oui",prochControle:"2025-12-01",observations:"RAS"},
+  {id:"INF-002",categorie:"Monte-charge",designation:"Monte-charge Magasin Central",emplacement:"Magasin Central",marque:"Kone",modele:"TranSys",dateMiseService:"2016-06-01",etat:"Opérationnel",dernMaint:"2025-06-01",prochMaint:"2025-12-01",periodicite:"Semestrielle",prestataire:"Kone Maroc",contrat:"Oui",prochControle:"2026-01-15",observations:"RAS"},
+  {id:"INF-003",categorie:"Groupe électrogène",designation:"Groupe électrogène 250 KVA",emplacement:"Local technique RDC",marque:"Caterpillar",modele:"DE250",dateMiseService:"2014-01-15",etat:"Opérationnel",dernMaint:"2025-02-20",prochMaint:"2025-08-20",periodicite:"Semestrielle",prestataire:"CAT Energy",contrat:"Oui",prochControle:"2025-08-20",observations:"Vidange + filtre effectués"},
+  {id:"INF-004",categorie:"Climatisation",designation:"Climatisation Bureaux 2ème étage",emplacement:"2ème étage",marque:"Daikin",modele:"VRV IV",dateMiseService:"2018-09-01",etat:"Opérationnel",dernMaint:"2025-05-01",prochMaint:"2025-11-01",periodicite:"Semestrielle",prestataire:"Froid Express",contrat:"Oui",prochControle:"2025-11-01",observations:"Recharge gaz R410A effectuée"},
+  {id:"INF-005",categorie:"Climatisation",designation:"Climatisation Bureaux 3ème étage",emplacement:"3ème étage",marque:"Daikin",modele:"VRV IV",dateMiseService:"2018-09-01",etat:"Opérationnel",dernMaint:"2025-05-01",prochMaint:"2025-11-01",periodicite:"Semestrielle",prestataire:"Froid Express",contrat:"Oui",prochControle:"2025-11-01",observations:"RAS"},
+  {id:"INF-006",categorie:"Toboggan",designation:"Toboggan expédition Quai 1",emplacement:"Quai 1",marque:"—",modele:"—",dateMiseService:"2012-01-01",etat:"Opérationnel",dernMaint:"2025-04-10",prochMaint:"2025-10-10",periodicite:"Semestrielle",prestataire:"Interne",contrat:"Non",prochControle:"—",observations:"Graissage rails effectué"},
+  {id:"INF-007",categorie:"Toboggan",designation:"Toboggan expédition Quai 2",emplacement:"Quai 2",marque:"—",modele:"—",dateMiseService:"2012-01-01",etat:"Opérationnel",dernMaint:"2025-04-10",prochMaint:"2025-10-10",periodicite:"Semestrielle",prestataire:"Interne",contrat:"Non",prochControle:"—",observations:"RAS"},
+  {id:"INF-008",categorie:"Quai",designation:"Quai de chargement N°1",emplacement:"RDC Expédition",marque:"Crawford",modele:"Niveleur",dateMiseService:"2013-05-01",etat:"Opérationnel",dernMaint:"2025-03-20",prochMaint:"2025-09-20",periodicite:"Semestrielle",prestataire:"Crawford Maroc",contrat:"Oui",prochControle:"2025-09-20",observations:"Vérins OK"},
+  {id:"INF-009",categorie:"Quai",designation:"Quai de chargement N°2",emplacement:"RDC Expédition",marque:"Crawford",modele:"Niveleur",dateMiseService:"2013-05-01",etat:"Opérationnel",dernMaint:"2025-03-20",prochMaint:"2025-09-20",periodicite:"Semestrielle",prestataire:"Crawford Maroc",contrat:"Oui",prochControle:"2025-09-20",observations:"RAS"},
+  {id:"INF-010",categorie:"Porte sectionnelle",designation:"Porte sectionnelle Quai 1",emplacement:"Quai 1",marque:"Hörmann",modele:"SPU F42",dateMiseService:"2013-05-01",etat:"Opérationnel",dernMaint:"2025-02-15",prochMaint:"2025-08-15",periodicite:"Semestrielle",prestataire:"Hörmann Maroc",contrat:"Oui",prochControle:"2025-08-15",observations:"Ressorts vérifiés"},
+  {id:"INF-011",categorie:"Porte sectionnelle",designation:"Porte sectionnelle Quai 2",emplacement:"Quai 2",marque:"Hörmann",modele:"SPU F42",dateMiseService:"2013-05-01",etat:"Opérationnel",dernMaint:"2025-02-15",prochMaint:"2025-08-15",periodicite:"Semestrielle",prestataire:"Hörmann Maroc",contrat:"Oui",prochControle:"2025-08-15",observations:"RAS"},
+  {id:"INF-012",categorie:"Système anti-incendie",designation:"Réseau sprinklers + RIA",emplacement:"Tous niveaux",marque:"Tyco",modele:"TY-FRB",dateMiseService:"2011-01-01",etat:"Opérationnel",dernMaint:"2025-01-10",prochMaint:"2025-07-10",periodicite:"Semestrielle",prestataire:"Sicli Maroc",contrat:"Oui",prochControle:"2025-07-10",observations:"Contrôle annuel extincteurs OK"},
+  {id:"INF-013",categorie:"Onduleur",designation:"Onduleur salle serveur",emplacement:"Salle informatique",marque:"APC",modele:"Smart-UPS 3000",dateMiseService:"2020-03-01",etat:"Opérationnel",dernMaint:"2025-04-15",prochMaint:"2025-10-15",periodicite:"Semestrielle",prestataire:"APC/Schneider",contrat:"Oui",prochControle:"2025-10-15",observations:"Batteries OK, autonomie 45min"},
+  {id:"INF-014",categorie:"Compresseur",designation:"Compresseur air comprimé",emplacement:"Local technique RDC",marque:"Atlas Copco",modele:"GA15",dateMiseService:"2017-01-01",etat:"Opérationnel",dernMaint:"2025-05-20",prochMaint:"2025-11-20",periodicite:"Semestrielle",prestataire:"Atlas Copco Maroc",contrat:"Oui",prochControle:"2025-11-20",observations:"Filtre remplacé"}
+];
+
+var DEFAULT_SOCIETE = {
+  nom:"SPRL",
+  adresse:"Zone Industrielle, Casablanca, Maroc",
+  telephone:"+212 5XX-XXXXXX",
+  email:"contact@spr.ma",
+  secteur:"Distribution Pharmaceutique",
+  responsableMaintenance:"Mohamed Senhaji",
+  responsableQualite:"—",
+  dateCreation:"2010-01-01"
+};
+
+// ─── SUPABASE CONFIG ────────────────────────────────────────────────────
+// >>> REMPLACEZ CES 2 VALEURS par celles de votre projet Supabase <<<
+var SUPABASE_URL = "https://qtyhioqciyzxraonxlwk.supabase.co";
+var SUPABASE_KEY = "sb_publishable_85ZuF9aFqxzBI6l0KncHUA_GSFUyDOL";
+var SYNC_ENABLED = SUPABASE_URL && SUPABASE_KEY;
+
+// ─── STORAGE (localStorage + Supabase sync) ─────────────────────────────
+function ld(k,f){try{var d=localStorage.getItem("maint_"+k);return d?JSON.parse(d):f;}catch(x){return f;}}
+function sv(k,d){
+  localStorage.setItem("maint_"+k,JSON.stringify(d));
+  if(SYNC_ENABLED)cloudSave("maint_"+k,"maintenance",d);
+}
+function cloudSave(id,module,data){
+  if(!SYNC_ENABLED)return;
+  fetch(SUPABASE_URL+"/rest/v1/data_store",{
+    method:"POST",
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+    body:JSON.stringify({id:id,module:module,data:data})
+  }).then(function(r){
+    if(r.ok)window.dispatchEvent(new CustomEvent("ps_sync_ok"));
+    else window.dispatchEvent(new CustomEvent("ps_sync_error",{detail:"HTTP "+r.status}));
+  }).catch(function(){
+    window.dispatchEvent(new CustomEvent("ps_sync_error",{detail:"réseau"}));
+  });
+}
+function cloudLoadAll(callback){
+  if(!SYNC_ENABLED){callback(null);return;}
+  fetch(SUPABASE_URL+"/rest/v1/data_store?or=(module.eq.maintenance,module.eq.shared)&select=id,data,updated_at",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(rows){
+    var map={};rows.forEach(function(r){map[r.id]=r.data;});callback(map);
+  }).catch(function(){callback(null);});
+}
+var _lastSyncHash="";
+function smartMerge(local,server,keyFn){
+  if(!Array.isArray(local)||!Array.isArray(server))return server||local||[];
+  var sMap={};server.forEach(function(r){var k=keyFn(r);if(k!=null)sMap[k]=r;});
+  var lMap={};local.forEach(function(r){var k=keyFn(r);if(k!=null)lMap[k]=r;});
+  var merged=[];
+  server.forEach(function(srv){
+    var k=keyFn(srv);if(k==null){merged.push(srv);return;}
+    var loc=lMap[k];
+    if(!loc){merged.push(srv);}
+    else{var st=new Date(srv._ts||0).getTime(),lt=new Date(loc._ts||0).getTime();merged.push(lt>=st?loc:srv);}
+  });
+  local.forEach(function(loc){var k=keyFn(loc);if(k==null||!sMap[k])merged.push(loc);});
+  return merged;
+}
+function cloudPoll(setters,onUpdate){
+  if(!SYNC_ENABLED)return;
+  fetch(SUPABASE_URL+"/rest/v1/data_store?or=(module.eq.maintenance,module.eq.shared)&select=id,data,updated_at&order=updated_at.desc",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(rows){
+    var dataStr=rows.map(function(r){return r.id+":"+JSON.stringify(r.data);}).join("|");
+    var h=0;for(var i=0;i<dataStr.length;i++){h=((h<<5)-h)+dataStr.charCodeAt(i);h|=0;}
+    var hash=h.toString(36);
+    if(hash===_lastSyncHash)return;
+    _lastSyncHash=hash;
+    var map={};rows.forEach(function(r){map[r.id]=r.data;});
+    if(map.maint_veh)setters.veh(function(l){return smartMerge(l,map.maint_veh,function(r){return r.id;});});
+    if(map.maint_gerb)setters.gerb(function(l){return smartMerge(l,map.maint_gerb,function(r){return r.id;});});
+    if(map.maint_tp)setters.tp(function(l){return smartMerge(l,map.maint_tp,function(r){return r.id;});});
+    if(map.maint_inter)setters.inter(function(l){return smartMerge(l,map.maint_inter,function(r){return r.id;});});
+    if(map.maint_infra)setters.infra(function(l){return smartMerge(l,map.maint_infra,function(r){return r.id;});});
+    if(map.maint_docs)setters.docs(function(l){return smartMerge(l,map.maint_docs,function(r){return r.id;});});
+    if(map.pharmashield_societe)setters.soc(map.pharmashield_societe);
+    if(onUpdate)onUpdate();
+  }).catch(function(){});
+}
+
+// ─── SAUVEGARDE JOURNALIÈRE SUPABASE ────────────────────────────────────
+function triggerDailyBackup(notify){
+  if(!SYNC_ENABLED)return;
+  var today=new Date().toISOString().slice(0,10);
+  var metroKey="backup_metro_"+today;
+  var maintKey="backup_maint_"+today;
+  fetch(SUPABASE_URL+"/rest/v1/data_store?or=(id.eq."+metroKey+",id.eq."+maintKey+")&select=id",{
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+  }).then(function(r){return r.json();}).then(function(existing){
+    var done=(existing||[]).map(function(r){return r.id;});
+    if(done.indexOf(metroKey)>=0&&done.indexOf(maintKey)>=0)return;
+    fetch(SUPABASE_URL+"/rest/v1/data_store?or=(module.eq.metrologie,module.eq.maintenance,module.eq.shared)&select=id,module,data",{
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+    }).then(function(r){return r.json();}).then(function(rows){
+      var metro={},maint={},shared={};
+      rows.forEach(function(r){
+        if(r.module==="metrologie")metro[r.id]=r.data;
+        else if(r.module==="maintenance")maint[r.id]=r.data;
+        else if(r.module==="shared")shared[r.id]=r.data;
+      });
+      var saves=[];
+      if(done.indexOf(metroKey)<0&&Object.keys(metro).length>0)
+        saves.push(fetch(SUPABASE_URL+"/rest/v1/data_store",{method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+          body:JSON.stringify({id:metroKey,module:"backup",data:{_date:today,_module:"metrologie",content:Object.assign({},metro,shared)}})}));
+      if(done.indexOf(maintKey)<0&&Object.keys(maint).length>0)
+        saves.push(fetch(SUPABASE_URL+"/rest/v1/data_store",{method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+          body:JSON.stringify({id:maintKey,module:"backup",data:{_date:today,_module:"maintenance",content:Object.assign({},maint,shared)}})}));
+      if(!saves.length)return;
+      Promise.all(saves).then(function(){
+        var cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+        fetch(SUPABASE_URL+"/rest/v1/data_store?module=eq.backup&updated_at=lt."+cutoff.toISOString(),{
+          method:"DELETE",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Prefer":"return=minimal"}
+        }).catch(function(){});
+        if(notify)notify("Sauvegarde journalière Supabase effectuée — "+today);
+      }).catch(function(){});
+    }).catch(function(){});
+  }).catch(function(){});
+}
+
+// ─── SUPABASE STORAGE (upload/download fichiers) ────────────────────────
+var STORAGE_BUCKET = "documents";
+var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+
+function uploadToStorage(file, folder, callback) {
+  if (file.size > MAX_FILE_SIZE) { callback("Fichier trop volumineux (max 10 Mo)"); return; }
+  var ts = Date.now();
+  var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  var path = folder + "/" + ts + "_" + safeName;
+  fetch(SUPABASE_URL + "/storage/v1/object/" + STORAGE_BUCKET + "/" + path, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": file.type, "x-upsert": "true" },
+    body: file
+  }).then(function(r) {
+    if (r.ok) {
+      var publicUrl = SUPABASE_URL + "/storage/v1/object/public/" + STORAGE_BUCKET + "/" + path;
+      callback(null, publicUrl, path);
+    } else { r.json().then(function(err) { callback(err.message || err.error || "Erreur upload"); }).catch(function() { callback("Erreur upload"); }); }
+  }).catch(function() { callback("Erreur réseau"); });
+}
+
+function deleteFromStorage(path, callback) {
+  fetch(SUPABASE_URL + "/storage/v1/object/" + STORAGE_BUCKET + "/" + path, {
+    method: "DELETE",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+  }).then(function() { callback(null); }).catch(function() { callback("Erreur suppression"); });
+}
+
+// ─── AUDIT LOG UTILITIES ─────────────────────────────────────────────────
+function computeDiff(oldObj,newObj){
+  if(!oldObj||!newObj)return[];
+  var skip=["fileUrl","filePath","uploadedAt"];
+  var changes=[];
+  var allKeys=Object.keys(Object.assign({},oldObj,newObj));
+  allKeys.forEach(function(k){
+    if(skip.indexOf(k)>=0)return;
+    var ov=oldObj[k]===undefined?"":oldObj[k];
+    var nv=newObj[k]===undefined?"":newObj[k];
+    if(JSON.stringify(ov)!==JSON.stringify(nv))changes.push({champ:k,avant:String(ov),apres:String(nv)});
+  });
+  return changes;
+}
+function queueAuditEntry(entry){
+  try{var q=JSON.parse(localStorage.getItem("pharmashield_audit_queue")||"[]");q.push(entry);if(q.length>500)q=q.slice(-500);localStorage.setItem("pharmashield_audit_queue",JSON.stringify(q));}catch(x){}
+}
+function flushAuditQueue(){
+  if(!SYNC_ENABLED)return;
+  try{
+    var q=JSON.parse(localStorage.getItem("pharmashield_audit_queue")||"[]");
+    if(!q.length)return;
+    q.forEach(function(entry){fetch(SUPABASE_URL+"/rest/v1/audit_log",{method:"POST",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify(entry)}).catch(function(){});});
+    localStorage.removeItem("pharmashield_audit_queue");
+  }catch(x){}
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────
+var today=new Date();
+function diffD(d){return Math.ceil((new Date(d)-today)/86400000);}
+function fmtD(d){return d&&d!=="—"?new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}):"—";}
+function fmtN(n){return n?n.toLocaleString("fr-FR"):"—";}
+
+function Icon(p){return e("svg",{width:p.size||20,height:p.size||20,viewBox:"0 0 24 24",fill:"none",stroke:p.color||"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:p.d}));}
+
+var ic={
+  dashboard:"M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
+  car:"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-2-2.2-3.3C13 5.6 12 5 11 5H6c-.6 0-1.1.2-1.4.6L3 8 1 10v6c0 .6.4 1 1 1h1",
+  wrench:"M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
+  alert:"M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z M12 9v4 M12 17h.01",
+  clock:"M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2",
+  check:"M20 6L9 17l-5-5",
+  stats:"M18 20V10 M12 20V4 M6 20v-6",
+  edit:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7 M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  trash:"M3 6h18 M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2",
+  plus:"M12 5v14 M5 12h14",
+  close:"M18 6L6 18 M6 6l12 12",
+  home:"M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
+  lift:"M12 2v20 M2 12h20 M7 7l5-5 5 5 M7 17l5 5 5-5",
+  download:"M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M7 10l5 5 5-5 M12 15V3",
+  upload:"M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M17 8l-5-5-5 5 M12 3v12",
+  settings:"M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01",
+  building:"M3 21h18 M9 8h1 M9 12h1 M9 16h1 M14 8h1 M14 12h1 M14 16h1 M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16",
+  file:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+  eye:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 100 6 3 3 0 000-6z",
+  journal:"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+};
+
+var etatColors={
+  "Opérationnel":{bg:"#E8F5E9",text:"#2E7D32",dot:"#4CAF50"},
+  "En panne":{bg:"#FFEBEE",text:"#B71C1C",dot:"#F44336"},
+  "En maintenance":{bg:"#FFF3E0",text:"#E65100",dot:"#FF9800"},
+  "Hors service":{bg:"#ECEFF1",text:"#546E7A",dot:"#90A4AE"},
+  "Résolu":{bg:"#E8F5E9",text:"#2E7D32",dot:"#4CAF50"},
+  "En cours":{bg:"#FFF3E0",text:"#E65100",dot:"#FF9800"},
+  "En attente":{bg:"#FBE9E7",text:"#BF360C",dot:"#F44336"},
+  "Planifié":{bg:"#E3F2FD",text:"#1565C0",dot:"#2196F3"}
+};
+
+function EtatBadge(p){
+  var c=etatColors[p.val]||{bg:"#eee",text:"#666",dot:"#999"};
+  return e("span",{className:"etat-badge",style:{background:c.bg,color:c.text}},
+    e("span",{style:{width:7,height:7,borderRadius:"50%",background:c.dot,display:"inline-block"}}),p.val);
+}
+
+function CompBadge(p){
+  var c=p.val==="Bon"?"#4CAF50":p.val==="Dégradé"||p.val==="À surveiller"||p.val==="Usé"?"#FF9800":"#F44336";
+  return e("span",{style:{fontSize:11,fontWeight:600,color:c}},p.val||"—");
+}
+
+function Modal(p){
+  return e("div",{className:"modal-overlay",onClick:p.onClose},
+    e("div",{className:"modal-box",onClick:function(ev){ev.stopPropagation();}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("h3",{style:{fontSize:18,fontWeight:700,color:"#0D2137",margin:0}},p.title),
+        e("button",{className:"btn-icon",onClick:p.onClose},e(Icon,{d:ic.close,size:16,color:"#888"}))),
+      p.children));
+}
+
+function Field(p){
+  var inp;
+  if(p.options)inp=e("select",{value:p.value||"",onChange:function(ev){p.onChange(ev.target.value);}},p.options.map(function(o){return e("option",{key:o,value:o},o);}));
+  else inp=e("input",{type:p.type||"text",value:p.value||"",onChange:function(ev){p.onChange(ev.target.value);}});
+  return e("div",{className:"form-group"},e("label",null,p.label),inp);
+}
+
+// Helper: date color for table cells
+function dateColor(d){
+  if(!d||d==="—") return null;
+  var days=diffD(d);
+  if(days<0) return "#F44336";
+  if(days<30) return "#FF9800";
+  return null;
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+function MaintApp(){
+  var ps=useState("dashboard");var page=ps[0];var setPage=ps[1];
+  var ds1=useState(function(){return ld("veh",DEFAULT_VEHICULES);});var veh=ds1[0];var setVeh=ds1[1];
+  var ds2=useState(function(){return ld("gerb",DEFAULT_GERBEURS);});var gerb=ds2[0];var setGerb=ds2[1];
+  var ds3=useState(function(){return ld("tp",DEFAULT_TRANSPALETTES);});var tp=ds3[0];var setTP=ds3[1];
+  var ds4=useState(function(){return ld("inter",DEFAULT_INTERVENTIONS);});var inter=ds4[0];var setInter=ds4[1];
+  var ds5=useState(function(){try{var d=localStorage.getItem("pharmashield_societe");return d?JSON.parse(d):DEFAULT_SOCIETE;}catch(x){return DEFAULT_SOCIETE;}});var soc=ds5[0];var setSoc=ds5[1];
+  var ds6=useState(function(){return ld("infra",DEFAULT_INFRASTRUCTURE);});var infra=ds6[0];var setInfra=ds6[1];
+  var ds7=useState(function(){return ld("docs",[]);});var docs=ds7[0];var setDocs=ds7[1];
+
+  var ds8=useState(function(){return ld("corbeille",[]);});var corbeille=ds8[0];var setCorbeille=ds8[1];
+  var als=useState([]);var auditLog=als[0];var setAuditLog=als[1];
+  var ses=useState(false);var syncError=ses[0];var setSyncError=ses[1];
+  var afs=useState({action:"",user:"",entite:""});var auditFilter=afs[0];var setAuditFilter=afs[1];
+  var axs=useState(null);var expandedAudit=axs[0];var setExpandedAudit=axs[1];
+
+  var ms=useState(null);var modal=ms[0];var setModal=ms[1];
+  var modalRef=useRef(null);
+  var eds=useState({});var ed=eds[0];var setEd=eds[1];
+  var eis=useState(-1);var edIdx=eis[0];var setEdIdx=eis[1];
+  var cs=useState(null);var conf=cs[0];var setConf=cs[1];
+  var tss=useState("");var toast=tss[0];var setToast=tss[1];
+  var importRef=useRef(null);
+
+  // Sync TO localStorage + Supabase on every change
+  useEffect(function(){sv("veh",veh);},[veh]);
+  useEffect(function(){sv("gerb",gerb);},[gerb]);
+  useEffect(function(){sv("tp",tp);},[tp]);
+  useEffect(function(){sv("inter",inter);},[inter]);
+  useEffect(function(){localStorage.setItem("pharmashield_societe",JSON.stringify(soc));if(SYNC_ENABLED)cloudSave("pharmashield_societe","shared",soc);},[soc]);
+  useEffect(function(){sv("infra",infra);},[infra]);
+  useEffect(function(){sv("docs",docs);},[docs]);
+  useEffect(function(){sv("corbeille",corbeille);},[corbeille]);
+
+  // ─── Corbeille & Backup ──────────────────────────────────────────────
+  function moveToTrash(type,item){
+    var entry={id:"TRASH-"+Date.now(),type:type,data:item,deletedAt:new Date().toISOString()};
+    setCorbeille(function(p){var n=p.slice();n.unshift(entry);if(n.length>50)n=n.slice(0,50);return n;});
+  }
+
+  function restoreFromTrash(trashIdx){
+    var entry=corbeille[trashIdx];
+    if(!entry)return;
+    var t=entry.type;var d=entry.data;
+    if(t==="vehicule")setVeh(function(p){return p.concat([d]);});
+    else if(t==="gerbeur")setGerb(function(p){return p.concat([d]);});
+    else if(t==="transpalette")setTP(function(p){return p.concat([d]);});
+    else if(t==="intervention")setInter(function(p){return p.concat([d]);});
+    else if(t==="infrastructure")setInfra(function(p){return p.concat([d]);});
+    else if(t==="document")setDocs(function(p){return p.concat([d]);});
+    setCorbeille(function(p){return p.filter(function(_,i){return i!==trashIdx;});});
+    showToast("Élément restauré avec succès");
+  }
+
+  function permanentDelete(trashIdx){
+    setCorbeille(function(p){return p.filter(function(_,i){return i!==trashIdx;});});
+    showToast("Supprimé définitivement");
+  }
+
+  function emptyTrash(){
+    setConf({msg:"Vider la corbeille ? Cette action est irréversible.\n"+corbeille.length+" élément(s) seront supprimés définitivement.",fn:function(){
+      setCorbeille([]);setConf(null);showToast("Corbeille vidée");
+    }});
+  }
+
+  var MAX_BACKUPS=10;
+  function createBackup(reason){
+    var backups=ld("backups",[]);
+    var snapshot={id:"BKP-"+Date.now(),reason:reason,date:new Date().toISOString(),data:{vehicules:veh,gerbeurs:gerb,transpalettes:tp,interventions:inter,infrastructure:infra,documents:docs,societe:soc}};
+    backups.unshift(snapshot);
+    if(backups.length>MAX_BACKUPS)backups=backups.slice(0,MAX_BACKUPS);
+    sv("backups",backups);
+  }
+
+  function getBackups(){return ld("backups",[]);}
+
+  function restoreBackup(bkpIdx){
+    var backups=getBackups();
+    var bkp=backups[bkpIdx];
+    if(!bkp)return;
+    setConf({msg:"Restaurer le point du "+new Date(bkp.date).toLocaleString("fr-FR")+" ?\n("+bkp.reason+")\nCela remplacera toutes les données actuelles.",fn:function(){
+      if(bkp.data.vehicules)setVeh(bkp.data.vehicules);
+      if(bkp.data.gerbeurs)setGerb(bkp.data.gerbeurs);
+      if(bkp.data.transpalettes)setTP(bkp.data.transpalettes);
+      if(bkp.data.interventions)setInter(bkp.data.interventions);
+      if(bkp.data.infrastructure)setInfra(bkp.data.infrastructure);
+      if(bkp.data.documents)setDocs(bkp.data.documents);
+      if(bkp.data.societe)setSoc(bkp.data.societe);
+      setConf(null);showToast("Données restaurées depuis le backup");
+    }});
+  }
+
+  function deleteBackup(bkpIdx){
+    var backups=getBackups();
+    backups.splice(bkpIdx,1);
+    sv("backups",backups);
+    showToast("Point de restauration supprimé");
+  }
+
+  // ─── Indicateur en ligne / hors ligne ──────────────────────────────
+  var onlineState=useState(navigator.onLine);var isOnline=onlineState[0];var setIsOnline=onlineState[1];
+  var conflictState=useState(null);var conflictData=conflictState[0];var setConflictData=conflictState[1];
+  var cstep=useState("initial");var conflictStep=cstep[0];var setConflictStep=cstep[1];
+  var cchk=useState(false);var conflictChecked=cchk[0];var setConflictChecked=cchk[1];
+
+  useEffect(function(){
+    function goOnline(){setIsOnline(true);checkConflicts();flushAuditQueue();}
+    function goOffline(){setIsOnline(false);showToast("Mode hors ligne — vos modifications sont sauvegardees localement");}
+    window.addEventListener("online",goOnline);
+    window.addEventListener("offline",goOffline);
+    return function(){window.removeEventListener("online",goOnline);window.removeEventListener("offline",goOffline);};
+  },[]);
+  useEffect(function(){
+    function onErr(){setSyncError(true);}
+    function onOk(){setSyncError(false);}
+    window.addEventListener("ps_sync_error",onErr);
+    window.addEventListener("ps_sync_ok",onOk);
+    return function(){window.removeEventListener("ps_sync_error",onErr);window.removeEventListener("ps_sync_ok",onOk);};
+  },[]);
+
+  function getLocalHash(){
+    var data=JSON.stringify({veh:veh,gerb:gerb,tp:tp,inter:inter,infra:infra});
+    var h=0;for(var i=0;i<data.length;i++){h=((h<<5)-h)+data.charCodeAt(i);h|=0;}
+    return h.toString(36);
+  }
+
+  function checkConflicts(){
+    if(!SYNC_ENABLED)return;
+    cloudLoadAll(function(map){
+      if(!map)return;
+      if(map.maint_backups)localStorage.setItem("maint_backups",JSON.stringify(map.maint_backups));
+      var ajouts=0,ecrases=0;
+      function applyMerge(local,server,keyFn,setter){
+        if(!server)return;
+        var lMap={};local.forEach(function(r){var k=keyFn(r);if(k)lMap[k]=r;});
+        server.forEach(function(srv){
+          var k=keyFn(srv);if(!k)return;
+          if(!lMap[k]){ajouts++;}
+          else if(srv._ts&&lMap[k]._ts&&new Date(srv._ts)>new Date(lMap[k]._ts)){ecrases++;}
+        });
+        setter(smartMerge(local,server,keyFn));
+      }
+      if(map.maint_veh)applyMerge(veh,map.maint_veh,function(r){return r.id;},setVeh);
+      if(map.maint_gerb)applyMerge(gerb,map.maint_gerb,function(r){return r.id;},setGerb);
+      if(map.maint_tp)applyMerge(tp,map.maint_tp,function(r){return r.id;},setTP);
+      if(map.maint_inter)applyMerge(inter,map.maint_inter,function(r){return r.id;},setInter);
+      if(map.maint_infra)applyMerge(infra,map.maint_infra,function(r){return r.id;},setInfra);
+      if(map.maint_docs)applyMerge(docs,map.maint_docs,function(r){return r.id;},setDocs);
+      if(map.pharmashield_societe)setSoc(map.pharmashield_societe);
+      var msg=[];
+      if(ajouts>0)msg.push(ajouts+" ajout(s) du serveur intégré(s)");
+      if(ecrases>0)msg.push(ecrases+" fiche(s) mise(s) à jour — voir le journal");
+      if(msg.length>0)setTimeout(function(){showToast("Sync : "+msg.join(" · "));},400);
+    });
+  }
+
+  function resolveConflict(choice){
+    if(!conflictData)return;
+    if(choice==="server"){
+      createBackup("Avant remplacement par les donnees serveur");
+      var map=conflictData.map;
+      if(map.maint_backups)localStorage.setItem("maint_backups",JSON.stringify(map.maint_backups));
+      if(map.maint_veh)setVeh(function(l){return smartMerge(l,map.maint_veh,function(r){return r.id;});});
+      if(map.maint_gerb)setGerb(function(l){return smartMerge(l,map.maint_gerb,function(r){return r.id;});});
+      if(map.maint_tp)setTP(function(l){return smartMerge(l,map.maint_tp,function(r){return r.id;});});
+      if(map.maint_inter)setInter(function(l){return smartMerge(l,map.maint_inter,function(r){return r.id;});});
+      if(map.maint_infra)setInfra(function(l){return smartMerge(l,map.maint_infra,function(r){return r.id;});});
+      if(map.maint_docs)setDocs(function(l){return smartMerge(l,map.maint_docs,function(r){return r.id;});});
+      if(map.pharmashield_societe)setSoc(map.pharmashield_societe);
+      showToast("Donnees serveur chargees — backup local cree");
+    } else if(choice==="local"){
+      showToast("Donnees locales conservees");
+    } else if(choice==="export"){
+      var data={vehicules:veh,gerbeurs:gerb,transpalettes:tp,interventions:inter,infrastructure:infra,documents:docs,societe:soc,_reason:"Backup avant sync",_date:new Date().toISOString()};
+      var json=JSON.stringify(data,null,2);
+      var blob=new Blob([json],{type:"application/json"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a");
+      a.href=url;a.download="pharmashield-maintenance-backup-"+new Date().toISOString().slice(0,10)+".json";
+      document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+      resolveConflict("server");return;
+    }
+    setConflictData(null);setConflictStep("initial");setConflictChecked(false);
+  }
+
+  // Sync FROM Supabase on first load
+  useEffect(function(){
+    checkConflicts();
+    if(SYNC_ENABLED)setTimeout(function(){triggerDailyBackup(showToast);},5000);
+  },[]);
+
+  // Auto-sync toutes les 30s — bloqué si un formulaire est ouvert
+  useEffect(function(){modalRef.current=modal;},[modal]);
+  useEffect(function(){
+    if(!SYNC_ENABLED)return;
+    var setters={veh:setVeh,gerb:setGerb,tp:setTP,inter:setInter,infra:setInfra,docs:setDocs,soc:setSoc};
+    var timer=setInterval(function(){
+      if(isOnline&&!conflictData&&!modalRef.current)
+        cloudPoll(setters,function(){showToast("Données actualisées depuis le serveur");});
+    },30000);
+    return function(){clearInterval(timer);};
+  },[isOnline,conflictData]);
+
+  function showToast(m){setToast(m);setTimeout(function(){setToast("");},2500);}
+
+  function handleReset(){
+    setConf({msg:"Réinitialiser toutes les données aux valeurs par défaut ?\nUn point de restauration sera créé automatiquement.",fn:function(){
+      createBackup("Avant réinitialisation complète");
+      setVeh(DEFAULT_VEHICULES);setGerb(DEFAULT_GERBEURS);setTP(DEFAULT_TRANSPALETTES);
+      setInter(DEFAULT_INTERVENTIONS);setSoc(DEFAULT_SOCIETE);setInfra(DEFAULT_INFRASTRUCTURE);setDocs([]);
+      setConf(null);showToast("Données réinitialisées — backup créé");
+    }});
+  }
+
+  // ─── Import/Export ────────────────────────────────────────────────────
+  function exportData(){
+    var data={
+      vehicules:veh,
+      gerbeurs:gerb,
+      transpalettes:tp,
+      interventions:inter,
+      societe:soc,
+      infrastructure:infra,
+      documents:docs
+    };
+    var json=JSON.stringify(data,null,2);
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    var d=new Date();
+    var dateStr=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url;
+    a.download="pharmashield-maintenance-"+dateStr+".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Données exportées avec succès");
+  }
+
+  function importData(ev){
+    var file=ev.target.files[0];
+    if(!file) return;
+    var reader=new FileReader();
+    reader.onload=function(evt){
+      try{
+        var data=JSON.parse(evt.target.result);
+        if(!data.vehicules&&!data.gerbeurs&&!data.transpalettes&&!data.interventions&&!data.societe&&!data.infrastructure&&!data.documents){
+          showToast("Fichier invalide : format non reconnu");
+          return;
+        }
+        setConf({msg:"Importer les données depuis \""+file.name+"\" ?\nUn point de restauration sera créé automatiquement.",fn:function(){
+          createBackup("Avant import depuis "+file.name);
+          if(data.vehicules) setVeh(data.vehicules);
+          if(data.gerbeurs) setGerb(data.gerbeurs);
+          if(data.transpalettes) setTP(data.transpalettes);
+          if(data.interventions) setInter(data.interventions);
+          if(data.societe) setSoc(data.societe);
+          if(data.infrastructure) setInfra(data.infrastructure);
+          if(data.documents) setDocs(data.documents);
+          setConf(null);
+          showToast("Données importées avec succès");
+        }});
+      }catch(err){
+        showToast("Erreur de lecture du fichier JSON");
+      }
+    };
+    reader.readAsText(file);
+    ev.target.value="";
+  }
+
+  // ─── Import/Export par catégorie ────────────────────────────────────
+  var ieFileRef=useRef(null);
+  var ieCategory=useState("");var ieCurrentCat=ieCategory[0];var setIECurrentCat=ieCategory[1];
+
+  var IE_CATEGORIES=[
+    {id:"vehicules",label:"Parc Auto (Véhicules)",icon:ic.car,getData:function(){return veh;},setData:setVeh,count:function(){return veh.length;}},
+    {id:"gerbeurs",label:"Gerbeurs",icon:ic.lift,getData:function(){return gerb;},setData:setGerb,count:function(){return gerb.length;}},
+    {id:"transpalettes",label:"Transpalettes",icon:ic.lift,getData:function(){return tp;},setData:setTP,count:function(){return tp.length;}},
+    {id:"infrastructure",label:"Infrastructure",icon:ic.building,getData:function(){return infra;},setData:setInfra,count:function(){return infra.length;}},
+    {id:"interventions",label:"Interventions (Préventive & Corrective)",icon:ic.wrench,getData:function(){return inter;},setData:setInter,count:function(){return inter.length;}},
+    {id:"documents",label:"Documents Prestataires",icon:ic.file,getData:function(){return docs;},setData:setDocs,count:function(){return docs.length;}},
+    {id:"societe",label:"Paramètres Société",icon:ic.settings,getData:function(){return soc;},setData:setSoc,count:function(){return 1;}}
+  ];
+
+  function exportCategory(cat){
+    var catDef=IE_CATEGORIES.find(function(c){return c.id===cat;});
+    if(!catDef)return;
+    var payload={};payload[cat]=catDef.getData();payload._type=cat;payload._module="maintenance";payload._exportDate=new Date().toISOString();
+    var json=JSON.stringify(payload,null,2);
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    var d=new Date();
+    var dateStr=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url;a.download="pharmashield-"+cat+"-"+dateStr+".json";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showToast(catDef.label+" exporté(s) avec succès");
+  }
+
+  function importCategory(cat,file){
+    if(!file)return;
+    var catDef=IE_CATEGORIES.find(function(c){return c.id===cat;});
+    if(!catDef)return;
+    var reader=new FileReader();
+    reader.onload=function(evt){
+      try{
+        var data=JSON.parse(evt.target.result);
+        var payload=data[cat];
+        if(!payload&&data._type===cat){payload=data[cat];}
+        if(!payload){showToast("Fichier invalide : données \""+cat+"\" non trouvées");return;}
+        setConf({msg:"Importer "+catDef.label+" depuis ce fichier ?\nCela remplacera les données actuelles de cette catégorie.",fn:function(){
+          catDef.setData(payload);setConf(null);showToast(catDef.label+" importé(s) avec succès");
+        }});
+      }catch(err){showToast("Erreur de lecture du fichier JSON");}
+    };
+    reader.readAsText(file);
+  }
+
+  function exportAll(){
+    var data={vehicules:veh,gerbeurs:gerb,transpalettes:tp,interventions:inter,infrastructure:infra,documents:docs,societe:soc,_type:"all",_module:"maintenance",_exportDate:new Date().toISOString()};
+    var json=JSON.stringify(data,null,2);
+    var blob=new Blob([json],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    var d=new Date();
+    var dateStr=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url;a.download="pharmashield-maintenance-complet-"+dateStr+".json";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showToast("Export complet réalisé");
+  }
+
+  // Stats
+  var stats=useMemo(function(){
+    var totalCout=0;inter.forEach(function(i){totalCout+=i.cout||0;});
+    var enCours=inter.filter(function(i){return i.statut==="En cours"||i.statut==="En attente";}).length;
+    var resolus=inter.filter(function(i){return i.statut==="Résolu";}).length;
+    var enPanne=gerb.filter(function(g){return g.etat==="En panne"||g.etat==="En maintenance";}).length+tp.filter(function(t){return t.etat==="En panne"||t.etat==="En maintenance";}).length;
+    var vehEnRegle=0;veh.forEach(function(v){var ok=true;if(v.prochaineCT&&diffD(v.prochaineCT)<0)ok=false;if(v.prochaineVignette&&diffD(v.prochaineVignette)<0)ok=false;if(v.prochaineAssurance&&diffD(v.prochaineAssurance)<0)ok=false;if(ok)vehEnRegle++;});
+    var kmMoy=0;veh.forEach(function(v){kmMoy+=v.km;});kmMoy=veh.length?Math.round(kmMoy/veh.length):0;
+    var vidAPrev=veh.filter(function(v){return v.km>=v.prochaineVidange;}).length;
+    var infraCount=infra.length;
+    var infraMaintExp=infra.filter(function(inf){return inf.prochMaint&&diffD(inf.prochMaint)<0;}).length;
+    return {totalInter:inter.length,enCours:enCours,resolus:resolus,totalVeh:veh.length,totalEquip:gerb.length+tp.length,enPanne:enPanne,totalCout:totalCout,vehEnRegle:vehEnRegle,kmMoy:kmMoy,vidAPrev:vidAPrev,infraCount:infraCount,infraMaintExp:infraMaintExp};
+  },[veh,gerb,tp,inter,infra]);
+
+  // Alertes
+  var alertes=useMemo(function(){
+    var a=[];
+    veh.forEach(function(v){
+      if(v.prochaineCT&&diffD(v.prochaineCT)<0)a.push({type:"CT",msg:"Contrôle technique expiré — "+v.matricule,jours:Math.abs(diffD(v.prochaineCT)),badge:"CT"});
+      if(v.prochaineVignette&&diffD(v.prochaineVignette)<0)a.push({type:"VIGNETTE",msg:"Vignette expirée — "+v.matricule,jours:Math.abs(diffD(v.prochaineVignette)),badge:"VIGNETTE"});
+      if(v.prochaineAssurance&&diffD(v.prochaineAssurance)<0)a.push({type:"ASSURANCE",msg:"Assurance expirée — "+v.matricule,jours:Math.abs(diffD(v.prochaineAssurance)),badge:"ASSURANCE"});
+      if(v.km>=v.prochaineVidange)a.push({type:"VIDANGE",msg:"Vidange à prévoir — "+v.matricule,jours:0,badge:"VIDANGE"});
+    });
+    gerb.forEach(function(g){
+      if(g.prochVGP&&diffD(g.prochVGP)<0)a.push({type:"VGP",msg:"VGP expirée — "+g.code,jours:Math.abs(diffD(g.prochVGP)),badge:"VGP"});
+      if(g.etat==="En panne"||g.etat==="En maintenance")a.push({type:"PANNE",msg:g.code+" — "+g.etat,jours:0,badge:"PANNE"});
+    });
+    tp.forEach(function(t){
+      if(t.etat==="En panne")a.push({type:"PANNE",msg:t.code+" — En panne: "+t.probleme,jours:0,badge:"PANNE"});
+    });
+    infra.forEach(function(inf){
+      if(inf.prochMaint&&inf.prochMaint!=="—"&&diffD(inf.prochMaint)<0)a.push({type:"INFRA",msg:"Maintenance expirée — "+inf.designation,jours:Math.abs(diffD(inf.prochMaint)),badge:"INFRA"});
+    });
+    return a;
+  },[veh,gerb,tp,infra]);
+
+  // CRUD Vehicules
+  function openVehForm(idx){
+    if(idx>=0){setEd(Object.assign({},veh[idx]));setEdIdx(idx);}
+    else{setEd({id:"VEH-"+Date.now().toString(36),marque:"",modele:"",matricule:"",chauffeur:"",annee:2024,pf:6,km:0,dateVidange:"",kmVidange:0,prochaineVidange:0,dateNettoyage:"",dispo:100,prochaineCT:"",prochaineVignette:"",prochaineAssurance:""});setEdIdx(-1);}
+    setModal("veh");
+  }
+  function saveVeh(){if(!ed.matricule||!ed.marque){showToast("Matricule et Marque obligatoires");return;}var u=veh.slice();var r=Object.assign({},ed,{_ts:new Date().toISOString()});if(edIdx>=0){logAudit("MODIFICATION","vehicule",r.matricule,r.marque+" "+r.matricule,veh[edIdx],r);u[edIdx]=r;}else{logAudit("AJOUT","vehicule",r.matricule,r.marque+" "+r.matricule,null,r);u.push(r);}setVeh(u);setModal(null);showToast(edIdx>=0?"Véhicule modifié":"Véhicule ajouté");}
+  function deleteVeh(idx){setConf({msg:"Supprimer le véhicule "+veh[idx].matricule+" ?\nIl sera placé dans la corbeille.",fn:function(){logAudit("SUPPRESSION","vehicule",veh[idx].matricule,veh[idx].marque+" "+veh[idx].matricule,veh[idx],null);createBackup("Suppression véhicule "+veh[idx].matricule);moveToTrash("vehicule",veh[idx]);setVeh(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Véhicule déplacé vers la corbeille");}});}
+
+  var levTab=useState("gerbeurs");var levOnglet=levTab[0];var setLevOnglet=levTab[1];
+  var mtTab=useState("Tous");var maintTab=mtTab[0];var setMaintTab=mtTab[1];
+  var ht1=useState("Tous");var histCat=ht1[0];var setHistCat=ht1[1];
+  var ht2=useState("Tous");var histEquip=ht2[0];var setHistEquip=ht2[1];
+  var ht3=useState("Tous");var histType=ht3[0];var setHistType=ht3[1];
+
+  // CRUD Transpalettes
+  function openTPForm(idx){
+    if(idx>=0){setEd(Object.assign({},tp[idx]));setEdIdx(idx);}
+    else{setEd({id:"TP-"+Date.now().toString(36),code:"",emplacement:"",etat:"Opérationnel",probleme:"R A S",date:"",dispo:100,hydraulique:"Bon"});setEdIdx(-1);}
+    setModal("tp");
+  }
+  function saveTP(){if(!ed.code||!ed.emplacement){showToast("Code et Emplacement obligatoires");return;}var u=tp.slice();var r=Object.assign({},ed,{_ts:new Date().toISOString()});if(edIdx>=0){logAudit("MODIFICATION","transpalette",r.code,r.code+" — "+r.emplacement,tp[edIdx],r);u[edIdx]=r;}else{logAudit("AJOUT","transpalette",r.code,r.code+" — "+r.emplacement,null,r);u.push(r);}setTP(u);setModal(null);showToast(edIdx>=0?"Transpalette modifié":"Transpalette ajouté");}
+  function deleteTP(idx){setConf({msg:"Supprimer le transpalette "+tp[idx].code+" ?\nIl sera placé dans la corbeille.",fn:function(){logAudit("SUPPRESSION","transpalette",tp[idx].code,tp[idx].code,tp[idx],null);createBackup("Suppression transpalette "+tp[idx].code);moveToTrash("transpalette",tp[idx]);setTP(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Transpalette déplacé vers la corbeille");}});}
+
+  // CRUD Gerbeurs
+  function openGerbForm(idx){
+    if(idx>=0){setEd(Object.assign({},gerb[idx]));setEdIdx(idx);}
+    else{setEd({id:"GE-"+Date.now().toString(36),type:"électrique",code:"",emplacement:"",etat:"Opérationnel",dernMaint:"",prochMaint:"",dispo:100,heures:0,capacite:1000,batterie:"Bon",hydraulique:"Bon",chaine:"Bon",dateVGP:"",prochVGP:""});setEdIdx(-1);}
+    setModal("gerb");
+  }
+  function saveGerb(){if(!ed.code||!ed.emplacement){showToast("Code et Emplacement obligatoires");return;}var u=gerb.slice();var r=Object.assign({},ed,{_ts:new Date().toISOString()});if(edIdx>=0){logAudit("MODIFICATION","gerbeur",r.code,r.code+" — "+r.emplacement,gerb[edIdx],r);u[edIdx]=r;}else{logAudit("AJOUT","gerbeur",r.code,r.code+" — "+r.emplacement,null,r);u.push(r);}setGerb(u);setModal(null);showToast(edIdx>=0?"Gerbeur modifié":"Gerbeur ajouté");}
+  function deleteGerb(idx){setConf({msg:"Supprimer le gerbeur "+gerb[idx].code+" ?\nIl sera placé dans la corbeille.",fn:function(){logAudit("SUPPRESSION","gerbeur",gerb[idx].code,gerb[idx].code,gerb[idx],null);createBackup("Suppression gerbeur "+gerb[idx].code);moveToTrash("gerbeur",gerb[idx]);setGerb(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Gerbeur déplacé vers la corbeille");}});}
+
+  // CRUD Interventions
+  function openInterForm(idx){
+    if(idx>=0){setEd(Object.assign({},inter[idx]));setEdIdx(idx);}
+    else{setEd({id:"INT-"+Date.now().toString(36),date:"",equipement:"",code:"",lieu:"",probleme:"",action:"",statut:"Planifié",dateRep:"",tech:"",type:"Corrective",cout:0,duree:0});setEdIdx(-1);}
+    setModal("inter");
+  }
+  function saveInter(){if(!ed.equipement||!ed.date||!ed.code){showToast("Équipement, Date et Code obligatoires");return;}var u=inter.slice();var r=Object.assign({},ed,{_ts:new Date().toISOString()});if(edIdx>=0){logAudit("MODIFICATION","intervention",r.id||r.code,r.equipement+" ("+r.code+")",inter[edIdx],r);u[edIdx]=r;}else{logAudit("AJOUT","intervention",r.id||r.code,r.equipement+" ("+r.code+")",null,r);u.push(r);}setInter(u);setModal(null);showToast(edIdx>=0?"Intervention modifiée":"Intervention ajoutée");}
+  function deleteInter(idx){setConf({msg:"Supprimer l'intervention "+inter[idx].id+" ?\nElle sera placée dans la corbeille.",fn:function(){logAudit("SUPPRESSION","intervention",inter[idx].id,inter[idx].equipement,inter[idx],null);createBackup("Suppression intervention "+inter[idx].id);moveToTrash("intervention",inter[idx]);setInter(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Intervention déplacée vers la corbeille");}});}
+
+  // CRUD Infrastructure
+  function openInfraForm(idx){
+    if(idx>=0){setEd(Object.assign({},infra[idx]));setEdIdx(idx);}
+    else{setEd({id:"INF-"+Date.now().toString(36),categorie:"Ascenseur",designation:"",emplacement:"",marque:"",modele:"",dateMiseService:"",etat:"Opérationnel",dernMaint:"",prochMaint:"",periodicite:"Semestrielle",prestataire:"",contrat:"Non",prochControle:"",observations:""});setEdIdx(-1);}
+    setModal("infra");
+  }
+  function saveInfra(){if(!ed.designation||!ed.categorie||!ed.emplacement){showToast("Désignation, Catégorie et Emplacement obligatoires");return;}var u=infra.slice();var r=Object.assign({},ed,{_ts:new Date().toISOString()});if(edIdx>=0){logAudit("MODIFICATION","infrastructure",r.id||r.designation,r.designation,infra[edIdx],r);u[edIdx]=r;}else{logAudit("AJOUT","infrastructure",r.id||r.designation,r.designation,null,r);u.push(r);}setInfra(u);setModal(null);showToast(edIdx>=0?"Équipement modifié":"Équipement ajouté");}
+  function deleteInfra(idx){setConf({msg:"Supprimer l'équipement \""+infra[idx].designation+"\" ?\nIl sera placé dans la corbeille.",fn:function(){logAudit("SUPPRESSION","infrastructure",infra[idx].id||infra[idx].designation,infra[idx].designation,infra[idx],null);createBackup("Suppression infrastructure "+infra[idx].designation);moveToTrash("infrastructure",infra[idx]);setInfra(function(p){return p.filter(function(_,i){return i!==idx;});});setConf(null);showToast("Équipement déplacé vers la corbeille");}});}
+
+  // Infrastructure tab state
+  var infraTabState=useState("all");var infraTab=infraTabState[0];var setInfraTab=infraTabState[1];
+
+  // Société form state
+  var socEd=useState(null);var socForm=socEd[0];var setSocForm=socEd[1];
+
+  var currentUser=(function(){try{var s=sessionStorage.getItem("ps_user")||localStorage.getItem("ps_user");return s?JSON.parse(s):null;}catch(x){return null;}})();
+  if(!currentUser){window.location.replace("index.html");return null;}
+  var userRole=currentUser.role;
+  var isAdmin=userRole==="admin";
+
+  var FALLBACK_PERMS={
+    resp_qualite:{enregistreurs:"Complet",equip_interm:"Complet",documents:"Complet",parc_auto:"Lecture",levage:"Lecture",infrastructure:"Lecture",interventions:"Lecture",import_export:"Ecriture",corbeille:"Complet",parametres:"—",administration:"—"},
+    asst_qualite:{enregistreurs:"Ecriture",equip_interm:"Ecriture",documents:"Ecriture",parc_auto:"Lecture",levage:"Lecture",infrastructure:"Lecture",interventions:"Lecture",import_export:"Lecture",corbeille:"Lecture",parametres:"—",administration:"—"},
+    resp_maintenance:{enregistreurs:"—",equip_interm:"—",documents:"—",parc_auto:"Complet",levage:"Complet",infrastructure:"Complet",interventions:"Complet",import_export:"Ecriture",corbeille:"Complet",parametres:"—",administration:"—"}
+  };
+  var permState=useState(function(){try{var d=localStorage.getItem("pharmashield_perms");return d?JSON.parse(d):FALLBACK_PERMS;}catch(x){return FALLBACK_PERMS;}});
+  var PERMS_LOCAL=permState[0];
+  useEffect(function(){
+    if(!SYNC_ENABLED)return;
+    fetch(SUPABASE_URL+"/rest/v1/data_store?id=eq.pharmashield_perms&select=data",{
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+    }).then(function(r){return r.json();}).then(function(rows){
+      if(rows&&rows[0]&&rows[0].data){permState[1](rows[0].data);localStorage.setItem("pharmashield_perms",JSON.stringify(rows[0].data));}
+    }).catch(function(){});
+  },[]);
+  function getPerm(rubrique){
+    if(isAdmin)return"Complet";
+    if(!userRole||!PERMS_LOCAL[userRole])return"Lecture";
+    return PERMS_LOCAL[userRole][rubrique]||"—";
+  }
+  function canRead(r){var p=getPerm(r);return p==="Complet"||p==="Ecriture"||p==="Lecture";}
+  function canWrite(r){var p=getPerm(r);return p==="Complet"||p==="Ecriture";}
+  function canDelete(r){return getPerm(r)==="Complet";}
+
+  // ─── JOURNAL D'AUDIT ────────────────────────────────────────────────────
+  function logAudit(action,entiteType,entiteId,entiteLabel,oldData,newData){
+    var user=currentUser;
+    var entry={ts:new Date().toISOString(),user_id:user?user.id:"inconnu",user_nom:user?user.nom:"Inconnu",module:"maintenance",action:action,entite_type:entiteType,entite_id:String(entiteId||""),entite_label:String(entiteLabel||""),modifications:computeDiff(oldData,newData),ancienne_valeur:oldData||null,nouvelle_valeur:newData||null};
+    setAuditLog(function(prev){return [entry].concat(prev).slice(0,200);});
+    if(SYNC_ENABLED&&isOnline){fetch(SUPABASE_URL+"/rest/v1/audit_log",{method:"POST",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify(entry)}).catch(function(){queueAuditEntry(entry);});}
+    else{queueAuditEntry(entry);}
+  }
+  useEffect(function(){
+    if(page!=="journal"||!SYNC_ENABLED)return;
+    fetch(SUPABASE_URL+"/rest/v1/audit_log?module=eq.maintenance&order=ts.desc&limit=150",{headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}).then(function(r){return r.json();}).then(function(rows){if(Array.isArray(rows))setAuditLog(rows);}).catch(function(){});
+  },[page]);
+
+  var allNavItems=[
+    {id:"dashboard",label:"Tableau de bord",icon:ic.dashboard,perm:null},
+    {id:"parc",label:"Parc Auto",icon:ic.car,perm:"parc_auto"},
+    {id:"levage",label:"Moyens de Levage",icon:ic.lift,perm:"levage"},
+    {id:"infra",label:"Infrastructure",icon:ic.building,perm:"infrastructure"},
+    {id:"preventive",label:"Maint. Préventive",icon:ic.check,perm:"interventions"},
+    {id:"corrective",label:"Maint. Corrective",icon:ic.alert,perm:"interventions"},
+    {id:"historique",label:"Historique",icon:ic.clock,perm:"interventions"},
+    {id:"stats",label:"Statistiques",icon:ic.stats,perm:"interventions"},
+    {id:"documents",label:"Documents Prestataires",icon:ic.file,perm:"documents"},
+    {id:"journal",label:"Journal des modifications",icon:ic.journal,perm:null,adminOnly:true},
+    {id:"importexport",label:"Import / Export",icon:ic.download,perm:"import_export"},
+    {id:"corbeille",label:"Corbeille"+(corbeille.length>0?" ("+corbeille.length+")":""),icon:ic.trash,perm:"corbeille"},
+    {id:"parametres",label:"Paramètres Société",icon:ic.settings,perm:"parametres"}
+  ];
+  var navItems=allNavItems.filter(function(n){if(n.adminOnly&&!isAdmin)return false;return !n.perm||canRead(n.perm);});
+
+  // ─── NOTIFICATIONS GLOBALES ────────────────────────────────────────────
+  var globalNotifs=[];
+  var ctExp=veh.filter(function(v){return v.prochaineCT&&diffD(v.prochaineCT)<0;}).length;
+  var vigExp=veh.filter(function(v){return v.prochaineVignette&&diffD(v.prochaineVignette)<0;}).length;
+  var assExp=veh.filter(function(v){return v.prochaineAssurance&&diffD(v.prochaineAssurance)<0;}).length;
+  if(ctExp>0)globalNotifs.push({color:"#C62828",bg:"#FFEBEE",border:"#EF9A9A",text:ctExp+" CT expiree(s)",page:"parc"});
+  if(vigExp>0)globalNotifs.push({color:"#E65100",bg:"#FFF3E0",border:"#FFE082",text:vigExp+" vignette(s) expiree(s)",page:"parc"});
+  if(assExp>0)globalNotifs.push({color:"#C62828",bg:"#FFEBEE",border:"#EF9A9A",text:assExp+" assurance(s) expiree(s)",page:"parc"});
+  if(stats.infraMaintExp>0)globalNotifs.push({color:"#C62828",bg:"#FFEBEE",border:"#EF9A9A",text:stats.infraMaintExp+" infra. maint. expiree(s)",page:"infra"});
+  if(stats.enPanne>0)globalNotifs.push({color:"#E65100",bg:"#FFF3E0",border:"#FFE082",text:stats.enPanne+" equip. en panne",page:"levage"});
+
+  var notifBanner=globalNotifs.length>0&&page!=="dashboard"?e("div",{style:{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:8,padding:"8px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+    e(Icon,{d:ic.alert,size:16,color:"#F9A825"}),
+    globalNotifs.map(function(n,i){
+      return e("span",{key:i,onClick:function(){setPage(n.page);},style:{fontSize:11,color:n.color,fontWeight:600,cursor:"pointer",padding:"2px 8px",background:n.bg,borderRadius:6,border:"1px solid "+n.border}},n.text);
+    })):null;
+
+  var content=null;
+
+  // ═══ DASHBOARD ═══
+  if(page==="dashboard"){
+    var kpis=[
+      {label:"Total Véhicules",value:stats.totalVeh,color:"#1B4965"},
+      {label:"Vidanges à prévoir",value:stats.vidAPrev,color:"#E65100"},
+      {label:"Véhicules en règle",value:stats.vehEnRegle+"/"+stats.totalVeh,color:"#2E7D32"},
+      {label:"Km moyen",value:fmtN(stats.kmMoy),color:"#7B1FA2"},
+      {label:"Équip. Infrastructure",value:stats.infraCount,color:"#1565C0"},
+      {label:"Infra maint. expirée",value:stats.infraMaintExp,color:stats.infraMaintExp>0?"#F44336":"#4CAF50"}
+    ];
+    content=e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 20px",color:"#0D2137"}},"Tableau de bord Maintenance"),
+      alertes.length>0?e("div",{style:{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:10,padding:"16px 20px",marginBottom:24}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
+          e(Icon,{d:ic.alert,size:18,color:"#F9A825"}),
+          e("span",{style:{fontWeight:700,fontSize:14,color:"#F57F17"}},alertes.length+" alerte(s) active(s)")),
+        alertes.slice(0,5).map(function(a,i){
+          var bc=a.badge==="CT"||a.badge==="PANNE"?"#F44336":a.badge==="VIGNETTE"||a.badge==="INFRA"?"#FF9800":"#2196F3";
+          return e("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<4?"1px solid #FFF3E0":"none"}},
+            e("div",null,
+              e("div",{style:{fontSize:13,fontWeight:600,color:"#333"}},a.msg),
+              a.jours>0?e("div",{style:{fontSize:11,color:"#BF360C"}},"Expiré depuis "+a.jours+" jour(s)"):null),
+            e("span",{style:{padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:700,background:bc,color:"#fff"}},a.badge));
+        }),
+        alertes.length>5?e("div",{style:{fontSize:12,color:"#888",marginTop:8}},"+ "+(alertes.length-5)+" alertes supplémentaires"):null):null,
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}},
+        kpis.map(function(k,i){return e("div",{key:i,style:{background:"#fff",borderRadius:10,padding:"18px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:"4px solid "+k.color}},
+          e("div",{style:{fontSize:12,color:"#666",marginBottom:4}},k.label),
+          e("div",{style:{fontSize:28,fontWeight:800,color:k.color}},k.value));})),
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}},
+        e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Équipements de levage"),
+          gerb.concat(tp.map(function(t){return{code:t.code,type:"Transpalette",etat:t.etat};})).map(function(g,i){
+            return e("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f5f5f5"}},
+              e("div",null,e("span",{style:{fontWeight:600,fontSize:13}},g.code),e("span",{style:{fontSize:11,color:"#888",marginLeft:8}},g.type||"Gerbeur "+g.type)),
+              e(EtatBadge,{val:g.etat}));
+          })),
+        e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Dernières interventions"),
+          inter.slice(-5).reverse().map(function(r,i){
+            return e("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f5f5f5"}},
+              e("div",null,
+                e("div",{style:{fontSize:13,fontWeight:600}},r.probleme),
+                e("div",{style:{fontSize:11,color:"#888"}},r.code+" — "+fmtD(r.date))),
+              e(EtatBadge,{val:r.statut}));
+          }))),
+
+      e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+        e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Infrastructure — Prochaines maintenances"),
+        infra.filter(function(inf){return inf.prochMaint&&inf.prochMaint!=="—";}).sort(function(a,b){return new Date(a.prochMaint)-new Date(b.prochMaint);}).slice(0,6).map(function(inf,i){
+          var dc=dateColor(inf.prochMaint);
+          return e("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f5f5f5"}},
+            e("div",null,
+              e("div",{style:{fontSize:13,fontWeight:600}},inf.designation),
+              e("div",{style:{fontSize:11,color:"#888"}},inf.prestataire+" — "+inf.periodicite)),
+            e("span",{style:{fontSize:12,fontWeight:700,color:dc||"#2E7D32"}},fmtD(inf.prochMaint)));
+        }))
+    );
+  }
+
+  // ═══ PARC AUTO (TABLE) ═══
+  if(page==="parc"){
+    var parcStats={total:veh.length,enRegle:0,alertes:0,vidanges:0,coutTotal:0,kmTotal:0};
+    veh.forEach(function(v){
+      var ok=true;
+      if(v.prochaineCT&&diffD(v.prochaineCT)<0)ok=false;
+      if(v.prochaineVignette&&diffD(v.prochaineVignette)<0)ok=false;
+      if(v.prochaineAssurance&&diffD(v.prochaineAssurance)<0)ok=false;
+      if(ok)parcStats.enRegle++;else parcStats.alertes++;
+      if(v.km>=v.prochaineVidange)parcStats.vidanges++;
+      parcStats.kmTotal+=v.km||0;
+    });
+    inter.forEach(function(r){if(r.equipement==="Véhicule")parcStats.coutTotal+=r.cout||0;});
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        e("h2",{style:{fontSize:20,fontWeight:700,margin:0,color:"#0D2137"}},"Parc Auto"),
+        canWrite("parc_auto")?e("button",{className:"btn btn-primary",onClick:function(){openVehForm(-1);}},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter"):null),
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}},
+        [{l:"Véhicules",v:parcStats.total,c:"#1B4965"},{l:"En règle",v:parcStats.enRegle,c:"#2E7D32"},{l:"Docs expirés",v:parcStats.alertes,c:"#F44336"},{l:"Vidanges à prévoir",v:parcStats.vidanges,c:"#E65100"},{l:"Coût total maint.",v:fmtN(parcStats.coutTotal)+" DH",c:"#7B1FA2"}].map(function(k,i){
+          return e("div",{key:i,style:{background:"#fff",borderRadius:10,padding:"14px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:"4px solid "+k.c}},
+            e("div",{style:{fontSize:11,color:"#666",marginBottom:2}},k.l),
+            e("div",{style:{fontSize:22,fontWeight:800,color:k.c}},k.v));
+        })),
+
+      e("div",{style:{background:"#fff",borderRadius:10,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{className:"data-table"},
+          e("thead",null,e("tr",null,
+            ["Matricule","Marque/Modèle","Chauffeur","Année","Km actuel","Km avant vidange","Statut","CT","Vignette","Assurance","Actions"].map(function(h){return e("th",{key:h},h);}))),
+          e("tbody",null,veh.map(function(v,i){
+            var ctDays=v.prochaineCT?diffD(v.prochaineCT):999;
+            var vigDays=v.prochaineVignette?diffD(v.prochaineVignette):999;
+            var assDays=v.prochaineAssurance?diffD(v.prochaineAssurance):999;
+            var kmRestant=v.prochaineVidange-v.km;
+            var vidAlerte=kmRestant<=0;
+            var age=new Date().getFullYear()-v.annee;
+            var ctColor=ctDays<0?"#F44336":ctDays<30?"#FF9800":null;
+            var vigColor=vigDays<0?"#F44336":vigDays<30?"#FF9800":null;
+            var assColor=assDays<0?"#F44336":assDays<30?"#FF9800":null;
+            var nbProb=0;if(ctDays<0)nbProb++;if(vigDays<0)nbProb++;if(assDays<0)nbProb++;
+            var statut=nbProb>0?"Non conforme":vidAlerte?"Vidange requise":"En règle";
+            var statutBg=nbProb>0?"#FFEBEE":vidAlerte?"#FFF3E0":"#E8F5E9";
+            var statutColor=nbProb>0?"#B71C1C":vidAlerte?"#E65100":"#2E7D32";
+            var coutVeh=0;inter.forEach(function(r){if(r.code===v.matricule)coutVeh+=r.cout||0;});
+
+            return e("tr",{key:i},
+              e("td",{style:{fontWeight:700,color:"#1B4965"}},
+                e("div",null,v.matricule),
+                e("div",{style:{fontSize:10,color:"#888"}},v.pf+" CV")),
+              e("td",null,v.marque+" "+v.modele),
+              e("td",null,v.chauffeur),
+              e("td",null,v.annee,e("div",{style:{fontSize:10,color:age>=10?"#F44336":age>=7?"#E65100":"#888"}},age+" ans")),
+              e("td",{style:{fontWeight:600}},fmtN(v.km)+" km"),
+              e("td",null,
+                e("div",{style:{fontWeight:700,color:vidAlerte?"#B71C1C":kmRestant<2000?"#E65100":"#2E7D32"}},vidAlerte?"DÉPASSÉ":fmtN(kmRestant)+" km"),
+                vidAlerte?null:e("div",{style:{height:4,background:"#f0f0f0",borderRadius:2,marginTop:4}},
+                  e("div",{style:{height:4,borderRadius:2,width:Math.min(100,Math.max(0,(1-kmRestant/10000)*100))+"%",background:kmRestant<2000?"#FF9800":"#4CAF50"}}))),
+              e("td",null,e("span",{style:{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:700,background:statutBg,color:statutColor}},
+                e("span",{style:{width:6,height:6,borderRadius:"50%",background:statutColor,display:"inline-block"}}),statut)),
+              e("td",null,
+                e("div",{style:{color:ctColor,fontWeight:ctColor?700:400,fontSize:12}},fmtD(v.prochaineCT)),
+                ctDays<0?e("div",{style:{fontSize:10,color:"#B71C1C",fontWeight:700}},Math.abs(ctDays)+"j expiré"):ctDays<60?e("div",{style:{fontSize:10,color:"#FF9800"}},"J-"+ctDays):null),
+              e("td",null,
+                e("div",{style:{color:vigColor,fontWeight:vigColor?700:400,fontSize:12}},fmtD(v.prochaineVignette)),
+                vigDays<0?e("div",{style:{fontSize:10,color:"#B71C1C",fontWeight:700}},Math.abs(vigDays)+"j expiré"):vigDays<60?e("div",{style:{fontSize:10,color:"#FF9800"}},"J-"+vigDays):null),
+              e("td",null,
+                e("div",{style:{color:assColor,fontWeight:assColor?700:400,fontSize:12}},fmtD(v.prochaineAssurance)),
+                assDays<0?e("div",{style:{fontSize:10,color:"#B71C1C",fontWeight:700}},Math.abs(assDays)+"j expiré"):assDays<60?e("div",{style:{fontSize:10,color:"#FF9800"}},"J-"+assDays):null),
+              e("td",null,e("div",{style:{display:"flex",gap:4}},
+                canWrite("parc_auto")?e("button",{className:"btn-icon",onClick:function(){openVehForm(i);}},e(Icon,{d:ic.edit,size:13,color:"#E65100"})):null,
+                canDelete("parc_auto")?e("button",{className:"btn-icon danger",onClick:function(){deleteVeh(i);}},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+          })))),
+      veh.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",background:"#fff",borderRadius:"0 0 10px 10px"}},"Aucun véhicule"):null
+    );
+  }
+
+  // ═══ MOYENS DE LEVAGE (ONGLETS) ═══
+  if(page==="levage"){
+    var tabStyle=function(active){return{padding:"10px 24px",border:"none",borderBottom:active?"3px solid #E65100":"3px solid transparent",background:active?"#FFF3E0":"transparent",color:active?"#E65100":"#666",fontWeight:active?700:400,fontSize:14,cursor:"pointer",transition:"all 0.15s"};};
+
+    // KPI calculation
+    var levStats={gerbTotal:gerb.length,gerbOK:0,gerbAlert:0,tpTotal:tp.length,tpOK:0,tpAlert:0,coutGerb:0,coutTP:0,vgpExpired:0};
+    gerb.forEach(function(g){
+      if(g.etat==="Opérationnel")levStats.gerbOK++;else levStats.gerbAlert++;
+      if(g.prochVGP&&diffD(g.prochVGP)<0)levStats.vgpExpired++;
+    });
+    tp.forEach(function(t){if(t.etat==="Opérationnel")levStats.tpOK++;else levStats.tpAlert++;});
+    inter.forEach(function(r){
+      if(r.equipement&&r.equipement.indexOf("Gerbeur")>=0)levStats.coutGerb+=r.cout||0;
+      if(r.equipement==="Transpalette")levStats.coutTP+=r.cout||0;
+    });
+
+    // Gerbeurs table
+    var gerbTable=e("div",{style:{background:"#fff",borderRadius:"0 0 10px 10px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"auto"}},
+      e("table",{className:"data-table"},
+        e("thead",null,e("tr",null,
+          ["Code","Type","Emplacement","État","Capacité","Heures","Batterie","Hydraulique","Chaîne","Dern. Maint.","Proch. Maint.","Proch. VGP","Coût cumulé","Actions"].map(function(h){return e("th",{key:h},h);}))),
+        e("tbody",null,gerb.map(function(g,i){
+          var vgpColor=dateColor(g.prochVGP);
+          var vgpDays=g.prochVGP?diffD(g.prochVGP):999;
+          var maintColor=dateColor(g.prochMaint);
+          var maintDays=g.prochMaint?diffD(g.prochMaint):999;
+          var coutG=0;inter.forEach(function(r){if(r.code===g.code)coutG+=r.cout||0;});
+          var nbAlerts=0;
+          if(g.batterie==="À remplacer"||g.hydraulique==="Défaillant"||g.chaine==="À remplacer")nbAlerts++;
+          if(vgpDays<0)nbAlerts++;
+          if(maintDays<0)nbAlerts++;
+          return e("tr",{key:i,style:{background:nbAlerts>0?"#FFF8E1":undefined}},
+            e("td",{style:{fontWeight:700,color:"#1B4965"}},
+              e("div",null,g.code),
+              nbAlerts>0?e("div",{style:{fontSize:9,color:"#F44336",fontWeight:700}},nbAlerts+" alerte(s)"):null),
+            e("td",null,e("span",{style:{padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:700,background:g.type==="électrique"?"#E3F2FD":"#F3E5F5",color:g.type==="électrique"?"#1565C0":"#7B1FA2"}},g.type)),
+            e("td",null,g.emplacement),
+            e("td",null,e(EtatBadge,{val:g.etat})),
+            e("td",{style:{fontSize:12}},fmtN(g.capacite)+" kg"),
+            e("td",null,
+              e("div",{style:{fontWeight:600}},fmtN(g.heures)+" h"),
+              g.heures>3000?e("div",{style:{fontSize:9,color:"#E65100"}},"Révision recommandée"):null),
+            e("td",null,g.batterie?e(CompBadge,{val:g.batterie}):e("span",{style:{fontSize:11,color:"#aaa"}},"N/A")),
+            e("td",null,e(CompBadge,{val:g.hydraulique})),
+            e("td",null,e(CompBadge,{val:g.chaine})),
+            e("td",{style:{fontSize:12}},fmtD(g.dernMaint)||"—"),
+            e("td",null,
+              e("div",{style:{color:maintColor||"inherit",fontWeight:maintColor?700:400,fontSize:12}},fmtD(g.prochMaint)||"—"),
+              maintDays<0?e("div",{style:{fontSize:9,color:"#B71C1C",fontWeight:700}},Math.abs(maintDays)+"j retard"):maintDays<30?e("div",{style:{fontSize:9,color:"#FF9800"}},"J-"+maintDays):null),
+            e("td",null,
+              e("div",{style:{color:vgpColor||"inherit",fontWeight:vgpColor?700:400,fontSize:12}},fmtD(g.prochVGP)),
+              vgpDays<0?e("div",{style:{fontSize:9,color:"#B71C1C",fontWeight:700}},Math.abs(vgpDays)+"j expirée"):vgpDays<30?e("div",{style:{fontSize:9,color:"#FF9800"}},"J-"+vgpDays):null),
+            e("td",{style:{fontWeight:600,fontSize:12}},coutG>0?fmtN(coutG)+" DH":"—"),
+            e("td",null,e("div",{style:{display:"flex",gap:4}},
+              canWrite("levage")?e("button",{className:"btn-icon",onClick:function(){openGerbForm(i);}},e(Icon,{d:ic.edit,size:13,color:"#E65100"})):null,
+              canDelete("levage")?e("button",{className:"btn-icon danger",onClick:function(){deleteGerb(i);}},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+        }))),
+      gerb.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucun gerbeur"):null);
+
+    // Transpalettes table
+    var tpByMag={};tp.forEach(function(t){var m=t.emplacement;if(!tpByMag[m])tpByMag[m]=0;tpByMag[m]++;});
+    var tpTable=e("div",{style:{background:"#fff",borderRadius:"0 0 10px 10px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"auto"}},
+      e("table",{className:"data-table"},
+        e("thead",null,e("tr",null,
+          ["Code","Emplacement","État","Hydraulique","Observation","Dern. intervention","Coût cumulé","Actions"].map(function(h){return e("th",{key:h},h);}))),
+        e("tbody",null,tp.map(function(t,i){
+          var lastInter=null;var coutTP=0;
+          inter.forEach(function(r){if(r.code===t.code){coutTP+=r.cout||0;if(!lastInter||r.date>lastInter.date)lastInter=r;}});
+          var hasProb=t.probleme&&t.probleme!=="RAS"&&t.probleme.indexOf("remplacé")<0;
+          return e("tr",{key:i,style:{background:hasProb?"#FFF8E1":undefined}},
+            e("td",{style:{fontWeight:700,color:"#1B4965"}},t.code),
+            e("td",null,t.emplacement),
+            e("td",null,e(EtatBadge,{val:t.etat})),
+            e("td",null,e(CompBadge,{val:t.hydraulique})),
+            e("td",{style:{fontSize:12,maxWidth:200}},
+              t.probleme==="RAS"?e("span",{style:{color:"#4CAF50",fontWeight:600}},"RAS"):
+              e("span",{style:{color:hasProb?"#E65100":"#888"}},t.probleme||"—")),
+            e("td",{style:{fontSize:11}},lastInter?e("div",null,fmtD(lastInter.date),e("div",{style:{fontSize:10,color:"#888"}},lastInter.probleme)):"—"),
+            e("td",{style:{fontWeight:600,fontSize:12}},coutTP>0?fmtN(coutTP)+" DH":"—"),
+            e("td",null,e("div",{style:{display:"flex",gap:4}},
+              canWrite("levage")?e("button",{className:"btn-icon",onClick:function(){openTPForm(i);}},e(Icon,{d:ic.edit,size:13,color:"#E65100"})):null,
+              canDelete("levage")?e("button",{className:"btn-icon danger",onClick:function(){deleteTP(i);}},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+        }))),
+      tp.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucun transpalette"):null);
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        e("h2",{style:{fontSize:20,fontWeight:700,margin:0,color:"#0D2137"}},"Moyens de Levage"),
+        canWrite("levage")?e("button",{className:"btn btn-primary",onClick:function(){levOnglet==="gerbeurs"?openGerbForm(-1):openTPForm(-1);}},
+          e(Icon,{d:ic.plus,size:14,color:"#fff"}),levOnglet==="gerbeurs"?" Ajouter Gerbeur":" Ajouter Transpalette"):null),
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:12,marginBottom:16}},
+        [{l:"Gerbeurs",v:levStats.gerbTotal,c:"#1B4965"},{l:"Opérationnels",v:levStats.gerbOK,c:"#2E7D32"},{l:"VGP expirées",v:levStats.vgpExpired,c:"#F44336"},{l:"Transpalettes",v:levStats.tpTotal,c:"#7B1FA2"},{l:"Coût gerbeurs",v:fmtN(levStats.coutGerb)+" DH",c:"#E65100"},{l:"Coût transpalettes",v:fmtN(levStats.coutTP)+" DH",c:"#BF360C"}].map(function(k,i){
+          return e("div",{key:i,style:{background:"#fff",borderRadius:10,padding:"12px 14px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:"4px solid "+k.c}},
+            e("div",{style:{fontSize:10,color:"#666",marginBottom:2}},k.l),
+            e("div",{style:{fontSize:18,fontWeight:800,color:k.c}},k.v));
+        })),
+
+      e("div",{style:{display:"flex",borderBottom:"1px solid #E8EBF0",marginBottom:0,background:"#fff",borderRadius:"10px 10px 0 0"}},
+        e("button",{onClick:function(){setLevOnglet("gerbeurs");},style:tabStyle(levOnglet==="gerbeurs")},"Gerbeurs (",gerb.length,")"),
+        e("button",{onClick:function(){setLevOnglet("transpalettes");},style:tabStyle(levOnglet==="transpalettes")},"Transpalettes (",tp.length,")")),
+
+      levOnglet==="gerbeurs"?gerbTable:tpTable
+    );
+  }
+
+  // ═══ INFRASTRUCTURE ═══
+  if(page==="infra"){
+    var infraTabStyle=function(active){return{padding:"8px 16px",border:"none",borderBottom:active?"3px solid #E65100":"3px solid transparent",background:active?"#FFF3E0":"transparent",color:active?"#E65100":"#666",fontWeight:active?700:400,fontSize:12,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"};};
+
+    var infraCategories=["all"];
+    var catMap={};
+    infra.forEach(function(inf){
+      if(infraCategories.indexOf(inf.categorie)===-1)infraCategories.push(inf.categorie);
+      if(!catMap[inf.categorie])catMap[inf.categorie]=[];
+      catMap[inf.categorie].push(inf);
+    });
+
+    var filteredInfra=infraTab==="all"?infra:infra.filter(function(inf){return inf.categorie===infraTab;});
+
+    var catLabels={"all":"Tous ("+infra.length+")"};
+    infraCategories.forEach(function(cat){
+      if(cat!=="all")catLabels[cat]=cat+" ("+(catMap[cat]?catMap[cat].length:0)+")";
+    });
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("h2",{style:{fontSize:20,fontWeight:700,margin:0,color:"#0D2137"}},"Infrastructure"),
+        canWrite("infrastructure")?e("button",{className:"btn btn-primary",onClick:function(){openInfraForm(-1);}},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter"):null),
+
+      e("div",{style:{display:"flex",borderBottom:"1px solid #E8EBF0",marginBottom:0,background:"#fff",borderRadius:"10px 10px 0 0",overflowX:"auto"}},
+        infraCategories.map(function(cat){
+          return e("button",{key:cat,onClick:function(){setInfraTab(cat);},style:infraTabStyle(infraTab===cat)},catLabels[cat]);
+        })),
+
+      e("div",{style:{background:"#fff",borderRadius:"0 0 10px 10px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{className:"data-table"},
+          e("thead",null,e("tr",null,
+            ["Désignation","Emplacement","Marque/Modèle","État","Dern. Maint.","Proch. Maint.","Périodicité","Prestataire","Contrat","Observations","Actions"].map(function(h){return e("th",{key:h},h);}))),
+          e("tbody",null,filteredInfra.map(function(inf,i){
+            var realIdx=infra.indexOf(inf);
+            var pmColor=dateColor(inf.prochMaint);
+            var pmExpired=inf.prochMaint&&inf.prochMaint!=="—"&&diffD(inf.prochMaint)<0;
+            var pmSoon=inf.prochMaint&&inf.prochMaint!=="—"&&diffD(inf.prochMaint)>=0&&diffD(inf.prochMaint)<30;
+            return e("tr",{key:i},
+              e("td",{style:{fontWeight:600,color:"#1B4965",maxWidth:200}},
+                e("div",null,inf.designation),
+                infraTab==="all"?e("div",{style:{fontSize:10,color:"#888",fontWeight:400}},inf.categorie):null),
+              e("td",null,inf.emplacement),
+              e("td",null,inf.marque+(inf.modele&&inf.modele!=="—"?" "+inf.modele:"")),
+              e("td",null,e(EtatBadge,{val:inf.etat})),
+              e("td",null,fmtD(inf.dernMaint)),
+              e("td",null,
+                e("span",{style:{color:pmColor||"inherit",fontWeight:pmColor?700:400}},fmtD(inf.prochMaint)),
+                pmExpired?e("div",{style:{fontSize:10,color:"#B71C1C",fontWeight:700}},Math.abs(diffD(inf.prochMaint))+"j expiré"):null,
+                pmSoon?e("div",{style:{fontSize:10,color:"#FF9800"}},diffD(inf.prochMaint)+"j"):null),
+              e("td",null,inf.periodicite),
+              e("td",null,inf.prestataire),
+              e("td",null,e("span",{style:{padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:700,background:inf.contrat==="Oui"?"#E8F5E9":"#FFEBEE",color:inf.contrat==="Oui"?"#2E7D32":"#B71C1C"}},inf.contrat)),
+              e("td",{style:{maxWidth:150,fontSize:11}},inf.observations||"—"),
+              e("td",null,e("div",{style:{display:"flex",gap:4}},
+                canWrite("infrastructure")?e("button",{className:"btn-icon",onClick:function(){openInfraForm(realIdx);}},e(Icon,{d:ic.edit,size:13,color:"#E65100"})):null,
+                canDelete("infrastructure")?e("button",{className:"btn-icon danger",onClick:function(){deleteInfra(realIdx);}},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+          }))),
+        filteredInfra.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucun équipement dans cette catégorie"):null)
+    );
+  }
+
+  // ═══ MAINTENANCE PREVENTIVE ═══
+  if(page==="preventive"||page==="corrective"){
+    var maintType=page==="preventive"?"Préventive":"Corrective";
+    var maintTitle=page==="preventive"?"Maintenance Préventive":"Maintenance Corrective";
+    var typeItems=inter.filter(function(i){return i.type===maintType;});
+    var equipTypes=["Tous"];
+    typeItems.forEach(function(r){if(equipTypes.indexOf(r.equipement)<0)equipTypes.push(r.equipement);});
+    var filteredMaint=maintTab==="Tous"?typeItems:typeItems.filter(function(r){return r.equipement===maintTab;});
+    var tabSt=function(active){return{padding:"8px 18px",border:"none",borderBottom:active?"3px solid #E65100":"3px solid transparent",background:active?"#FFF3E0":"transparent",color:active?"#E65100":"#666",fontWeight:active?700:400,fontSize:12,cursor:"pointer",transition:"all 0.15s"};};
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        e("h2",{style:{fontSize:20,fontWeight:700,margin:0,color:"#0D2137"}},maintTitle),
+        e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          e("span",{style:{fontSize:13,color:"#888"}},filteredMaint.length+" / "+typeItems.length),
+          e("button",{className:"btn btn-primary",onClick:function(){
+            var newEd={id:(page==="preventive"?"PRV":"COR")+"-"+(inter.length+1).toString().padStart(3,"0"),date:"",equipement:"",code:"",lieu:"",probleme:"",action:"",statut:"Planifié",dateRep:"",tech:"",type:maintType,cout:0,duree:0};
+            setEd(newEd);setEdIdx(-1);setModal("inter");
+          }},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter"))),
+
+      e("div",{style:{display:"flex",borderBottom:"1px solid #E8EBF0",marginBottom:0,background:"#fff",borderRadius:"10px 10px 0 0",flexWrap:"wrap"}},
+        equipTypes.map(function(t){
+          var count=t==="Tous"?typeItems.length:typeItems.filter(function(r){return r.equipement===t;}).length;
+          return e("button",{key:t,onClick:function(){setMaintTab(t);},style:tabSt(maintTab===t)},t," (",count,")");
+        })),
+
+      e("div",{style:{background:"#fff",borderRadius:"0 0 10px 10px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{className:"data-table"},
+          e("thead",null,e("tr",null,
+            (page==="corrective"?["ID","Date","Équipement","Code","Problème","Action","Technicien","Coût","Durée","Statut","Actions"]:["ID","Date","Équipement","Code","Action","Technicien","Coût","Durée","Statut","Actions"]).map(function(h){return e("th",{key:h},h);}))),
+          e("tbody",null,filteredMaint.map(function(r,i){
+            var realIdx=inter.indexOf(r);
+            if(page==="corrective"){
+              return e("tr",{key:i},
+                e("td",{style:{fontWeight:600,color:"#1B4965"}},r.id),
+                e("td",null,fmtD(r.date)),
+                e("td",null,r.equipement),
+                e("td",{style:{fontWeight:600}},r.code),
+                e("td",{style:{maxWidth:180}},r.probleme),
+                e("td",{style:{maxWidth:200}},r.action),
+                e("td",null,r.tech||"—"),
+                e("td",{style:{fontWeight:600}},r.cout?fmtN(r.cout)+" DH":"—"),
+                e("td",null,r.duree?r.duree+"h":"—"),
+                e("td",null,e(EtatBadge,{val:r.statut})),
+                e("td",null,e("div",{style:{display:"flex",gap:4}},
+                  canWrite("interventions")?e("button",{className:"btn-icon",onClick:function(){openInterForm(realIdx);}},e(Icon,{d:ic.edit,size:13,color:"#E65100"})):null,
+                  canDelete("interventions")?e("button",{className:"btn-icon danger",onClick:function(){deleteInter(realIdx);}},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+            }
+            return e("tr",{key:i},
+              e("td",{style:{fontWeight:600,color:"#1B4965"}},r.id),
+              e("td",null,fmtD(r.date)),
+              e("td",null,r.equipement),
+              e("td",{style:{fontWeight:600}},r.code),
+              e("td",{style:{maxWidth:220}},r.action),
+              e("td",null,r.tech||"—"),
+              e("td",{style:{fontWeight:600}},r.cout?fmtN(r.cout)+" DH":"—"),
+              e("td",null,r.duree?r.duree+"h":"—"),
+              e("td",null,e(EtatBadge,{val:r.statut})),
+              e("td",null,e("div",{style:{display:"flex",gap:4}},
+                canWrite("interventions")?e("button",{className:"btn-icon",onClick:function(){openInterForm(realIdx);}},e(Icon,{d:ic.edit,size:13,color:"#E65100"})):null,
+                canDelete("interventions")?e("button",{className:"btn-icon danger",onClick:function(){deleteInter(realIdx);}},e(Icon,{d:ic.trash,size:13,color:"#F44336"})):null)));
+          }))),
+        filteredMaint.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucune intervention "+maintType.toLowerCase()):null)
+    );
+  }
+
+  // ═══ HISTORIQUE ═══
+  if(page==="historique"){
+    // Build category list
+    var histCategories=["Tous"];
+    inter.forEach(function(r){if(histCategories.indexOf(r.equipement)<0)histCategories.push(r.equipement);});
+    // Build equipment codes for selected category
+    var histEquipCodes=["Tous"];
+    inter.forEach(function(r){
+      if(histCat!=="Tous"&&r.equipement!==histCat)return;
+      if(histEquipCodes.indexOf(r.code)<0)histEquipCodes.push(r.code);
+    });
+    // Filter
+    var histFiltered=inter.filter(function(r){
+      if(histCat!=="Tous"&&r.equipement!==histCat)return false;
+      if(histEquip!=="Tous"&&r.code!==histEquip)return false;
+      if(histType!=="Tous"&&r.type!==histType)return false;
+      return true;
+    }).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    // KPIs
+    var hCout=0;var hDuree=0;var hDelais=[];
+    histFiltered.forEach(function(r){
+      hCout+=r.cout||0;hDuree+=r.duree||0;
+      if(r.date&&r.dateRep){var d=Math.ceil((new Date(r.dateRep)-new Date(r.date))/86400000);if(d>=0)hDelais.push(d);}
+    });
+    var hDelaiMoy=hDelais.length?Math.round(hDelais.reduce(function(a,b){return a+b;},0)/hDelais.length):0;
+    var tabSt=function(active){return{padding:"8px 16px",border:"none",borderBottom:active?"3px solid #E65100":"3px solid transparent",background:active?"#FFF3E0":"transparent",color:active?"#E65100":"#666",fontWeight:active?700:400,fontSize:12,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"};};
+
+    content=e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 16px",color:"#0D2137"}},"Historique Maintenance"),
+
+      // KPIs
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}},
+        [{l:"Interventions",v:histFiltered.length,c:"#1B4965"},{l:"Coût total",v:fmtN(hCout)+" DH",c:"#E65100"},{l:"Durée totale",v:hDuree+"h",c:"#7B1FA2"},{l:"Délai moyen résolution",v:hDelaiMoy+"j",c:"#2E7D32"}].map(function(k,i){
+          return e("div",{key:i,style:{background:"#fff",borderRadius:10,padding:"12px 14px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:"4px solid "+k.c}},
+            e("div",{style:{fontSize:10,color:"#666",marginBottom:2}},k.l),
+            e("div",{style:{fontSize:20,fontWeight:800,color:k.c}},k.v));
+        })),
+
+      // Filters row
+      e("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
+        // Type filter
+        e("div",{style:{display:"flex",gap:4}},
+          ["Tous","Corrective","Préventive"].map(function(t){
+            return e("button",{key:t,onClick:function(){setHistType(t);},style:{padding:"7px 16px",borderRadius:8,border:histType===t?"2px solid #E65100":"1px solid #ddd",background:histType===t?"#FFF3E0":"#fff",color:histType===t?"#E65100":"#666",fontWeight:histType===t?700:400,fontSize:12,cursor:"pointer"}},t);
+          })),
+        // Equipment dropdown
+        e("select",{value:histEquip,onChange:function(ev){setHistEquip(ev.target.value);},style:{padding:"8px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:12,background:"#fff",minWidth:180}},
+          histEquipCodes.map(function(c){return e("option",{key:c,value:c},c==="Tous"?"Tous les équipements":c);})),
+        e("span",{style:{fontSize:12,color:"#888"}},histFiltered.length+" / "+inter.length+" interventions")),
+
+      // Category tabs
+      e("div",{style:{display:"flex",borderBottom:"1px solid #E8EBF0",background:"#fff",borderRadius:"10px 10px 0 0",flexWrap:"wrap"}},
+        histCategories.map(function(cat){
+          var count=cat==="Tous"?inter.length:inter.filter(function(r){return r.equipement===cat;}).length;
+          return e("button",{key:cat,onClick:function(){setHistCat(cat);setHistEquip("Tous");},style:tabSt(histCat===cat)},cat==="Tous"?"Tous":cat," (",count,")");
+        })),
+
+      // Table
+      e("div",{style:{background:"#fff",borderRadius:"0 0 10px 10px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{className:"data-table"},
+          e("thead",null,e("tr",null,
+            ["Date","ID","Équipement","Code","Type","Problème","Action","Technicien","Coût","Durée","Délai","Statut"].map(function(h){return e("th",{key:h},h);}))),
+          e("tbody",null,histFiltered.map(function(r,i){
+            var delai="—";
+            if(r.date&&r.dateRep){var dj=Math.ceil((new Date(r.dateRep)-new Date(r.date))/86400000);delai=dj===0?"Même jour":dj+"j";}
+            return e("tr",{key:i},
+              e("td",null,fmtD(r.date)),
+              e("td",{style:{fontWeight:600,color:"#1B4965"}},r.id),
+              e("td",null,r.equipement),
+              e("td",{style:{fontWeight:600}},r.code),
+              e("td",null,e("span",{style:{padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:700,background:r.type==="Préventive"?"#E3F2FD":"#FFF3E0",color:r.type==="Préventive"?"#1565C0":"#E65100"}},r.type)),
+              e("td",{style:{maxWidth:180,fontSize:12}},r.probleme),
+              e("td",{style:{maxWidth:200,fontSize:11,color:"#555"}},r.action),
+              e("td",null,r.tech||"—"),
+              e("td",{style:{fontWeight:600}},r.cout?fmtN(r.cout)+" DH":"—"),
+              e("td",null,r.duree?r.duree+"h":"—"),
+              e("td",{style:{fontWeight:600,color:delai==="—"?"#888":delai==="Même jour"?"#2E7D32":"#E65100"}},delai),
+              e("td",null,e(EtatBadge,{val:r.statut})));
+          }))),
+        histFiltered.length===0?e("div",{style:{padding:40,textAlign:"center",color:"#999",fontSize:13}},"Aucune intervention pour ces filtres"):null)
+    );
+  }
+
+  // ═══ STATISTIQUES ═══
+  if(page==="stats"){
+    var totalCout=0;var coutCorr=0;var coutPrev=0;var totalDuree=0;
+    inter.forEach(function(i){totalCout+=i.cout||0;totalDuree+=i.duree||0;if(i.type==="Corrective")coutCorr+=i.cout||0;else coutPrev+=i.cout||0;});
+    content=e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 20px",color:"#0D2137"}},"Statistiques"),
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}},
+        [{l:"Coût total maintenance",v:fmtN(totalCout)+" DH",c:"#1B4965"},{l:"Coût correctif",v:fmtN(coutCorr)+" DH",c:"#E65100"},{l:"Coût préventif",v:fmtN(coutPrev)+" DH",c:"#2E7D32"},{l:"Durée totale",v:totalDuree+"h",c:"#7B1FA2"}].map(function(k,i){
+          return e("div",{key:i,style:{background:"#fff",borderRadius:10,padding:"18px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:"4px solid "+k.c}},
+            e("div",{style:{fontSize:12,color:"#666",marginBottom:4}},k.l),
+            e("div",{style:{fontSize:24,fontWeight:800,color:k.c}},k.v));})),
+      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}},
+        e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Répartition par type"),
+          [{l:"Corrective",v:inter.filter(function(i){return i.type==="Corrective";}).length,c:"#E65100"},{l:"Préventive",v:inter.filter(function(i){return i.type==="Préventive";}).length,c:"#2E7D32"}].map(function(r,i){
+            var pct=inter.length?(r.v/inter.length)*100:0;
+            return e("div",{key:i,style:{marginBottom:12}},
+              e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}},e("span",null,r.l),e("span",{style:{fontWeight:700,color:r.c}},r.v+" ("+Math.round(pct)+"%)")),
+              e("div",{style:{height:8,background:"#f0f0f0",borderRadius:4}},e("div",{style:{height:8,background:r.c,borderRadius:4,width:pct+"%"}})));
+          })),
+        e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+          e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Répartition par statut"),
+          ["Résolu","En cours","En attente","Planifié"].map(function(s){
+            var count=inter.filter(function(i){return i.statut===s;}).length;
+            var pct=inter.length?(count/inter.length)*100:0;
+            var c=(etatColors[s]||{dot:"#999"}).dot;
+            return e("div",{key:s,style:{marginBottom:12}},
+              e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}},e("span",null,s),e("span",{style:{fontWeight:700,color:c}},count)),
+              e("div",{style:{height:8,background:"#f0f0f0",borderRadius:4}},e("div",{style:{height:8,background:c,borderRadius:4,width:pct+"%"}})));
+          }))),
+
+      e("div",{style:{background:"#fff",borderRadius:10,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}},
+        e("h3",{style:{fontSize:14,fontWeight:700,margin:"0 0 14px",color:"#0D2137"}},"Infrastructure — "+stats.infraCount+" équipements"),
+        e("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}},
+          [{l:"Total équipements",v:stats.infraCount,c:"#1565C0"},{l:"Maintenance expirée",v:stats.infraMaintExp,c:stats.infraMaintExp>0?"#F44336":"#4CAF50"},{l:"Sous contrat",v:infra.filter(function(inf){return inf.contrat==="Oui";}).length,c:"#2E7D32"}].map(function(k,i){
+            return e("div",{key:i,style:{textAlign:"center",padding:12,background:"#FAFBFC",borderRadius:8}},
+              e("div",{style:{fontSize:24,fontWeight:800,color:k.c}},k.v),
+              e("div",{style:{fontSize:11,color:"#888",marginTop:4}},k.l));
+          })))
+    );
+  }
+
+  // ═══ DOCUMENTS PRESTATAIRES ═══
+  var docFileRef=useRef(null);
+  var docUploading=useState(false);var isUploading=docUploading[0];var setIsUploading=docUploading[1];
+  var docFilterType=useState("Tous");var dfType=docFilterType[0];var setDfType=docFilterType[1];
+  var docFilterEntite=useState("Tous");var dfEntite=docFilterEntite[0];var setDfEntite=docFilterEntite[1];
+
+  var DOC_TYPES=["PV de contrôle","Rapport de visite","Rapport d'intervention","Certificat","Bon de livraison","Autre"];
+  var ENTITE_TYPES=["Infrastructure","Véhicule","Gerbeur","Transpalette"];
+
+  function getAllEntites(){
+    var list=[];
+    infra.forEach(function(f){list.push({type:"Infrastructure",id:f.id,nom:f.categorie+" — "+f.designation});});
+    veh.forEach(function(v){list.push({type:"Véhicule",id:v.id,nom:v.marque+" "+v.modele+" ("+v.matricule+")"});});
+    gerb.forEach(function(g){list.push({type:"Gerbeur",id:g.id,nom:"Gerbeur "+g.type+" — "+g.code});});
+    tp.forEach(function(t){list.push({type:"Transpalette",id:t.id,nom:"Transpalette — "+t.code});});
+    return list;
+  }
+
+  function saveDoc(){
+    if(!ed.titre||!ed.typeDoc||!ed.entiteId){showToast("Titre, type et équipement obligatoires");return;}
+    var file=docFileRef.current&&docFileRef.current.files[0];
+    if(!file&&edIdx<0){showToast("Veuillez sélectionner un fichier");return;}
+    if(file){
+      setIsUploading(true);
+      var folder="maintenance/"+ed.entiteId;
+      uploadToStorage(file,folder,function(err,url,path){
+        setIsUploading(false);
+        if(err){showToast("Erreur: "+err);return;}
+        var doc=Object.assign({},ed,{fileUrl:url,filePath:path,fileName:file.name,fileSize:file.size,fileType:file.type,uploadedAt:new Date().toISOString(),_ts:new Date().toISOString()});
+        var u=docs.slice();
+        if(edIdx>=0){logAudit("MODIFICATION","document",doc.id,doc.titre,docs[edIdx],doc);u[edIdx]=doc;}else{logAudit("AJOUT","document",doc.id,doc.titre,null,doc);u.push(doc);}
+        setDocs(u);setModal(null);showToast("Document uploadé avec succès");
+      });
+    } else {
+      var u=docs.slice();var saved=Object.assign({},ed,{_ts:new Date().toISOString()});logAudit("MODIFICATION","document",saved.id,saved.titre,docs[edIdx],saved);u[edIdx]=saved;setDocs(u);setModal(null);showToast("Document modifié");
+    }
+  }
+
+  function deleteDoc(idx){
+    var doc=docs[idx];
+    setConf({msg:"Supprimer le document \""+doc.titre+"\" ?\nIl sera placé dans la corbeille.",fn:function(){
+      logAudit("SUPPRESSION","document",doc.id,doc.titre,doc,null);
+      createBackup("Suppression document "+doc.titre);moveToTrash("document",doc);
+      setDocs(function(p){return p.filter(function(_,i){return i!==idx;});});
+      setConf(null);showToast("Document déplacé vers la corbeille");
+    }});
+  }
+
+  function openDocForm(idx){
+    if(idx>=0){setEd(Object.assign({},docs[idx]));setEdIdx(idx);}
+    else{setEd({id:"DOC-"+Date.now(),titre:"",typeDoc:"PV de contrôle",prestataire:"",dateDoc:"",entiteType:"Infrastructure",entiteId:"",entiteNom:"",observations:""});setEdIdx(-1);}
+    setModal("doc");
+  }
+
+  if(page==="documents"){
+    var allEntites=getAllEntites();
+    var filteredDocs=docs.filter(function(d){
+      if(dfType!=="Tous"&&d.typeDoc!==dfType)return false;
+      if(dfEntite!=="Tous"&&d.entiteType!==dfEntite)return false;
+      return true;
+    });
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("h2",{style:{fontSize:20,fontWeight:700,margin:0,color:"#0D2137"}},"Documents Prestataires"),
+        canWrite("documents")?e("button",{className:"btn btn-primary",onClick:function(){openDocForm(-1);}},e(Icon,{d:ic.plus,size:14,color:"#fff"})," Ajouter un document"):null),
+
+      e("div",{style:{display:"flex",gap:12,marginBottom:20}},
+        e("select",{value:dfType,onChange:function(ev){setDfType(ev.target.value);},style:{padding:"8px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}},
+          e("option",{value:"Tous"},"Tous les types"),
+          DOC_TYPES.map(function(t){return e("option",{key:t,value:t},t);})),
+        e("select",{value:dfEntite,onChange:function(ev){setDfEntite(ev.target.value);},style:{padding:"8px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}},
+          e("option",{value:"Tous"},"Tous les équipements"),
+          ENTITE_TYPES.map(function(t){return e("option",{key:t,value:t},t);})),
+        e("div",{style:{marginLeft:"auto",fontSize:13,color:"#888",alignSelf:"center"}},filteredDocs.length+" document(s)")),
+
+      !SYNC_ENABLED?e("div",{style:{background:"#FFF3E0",border:"1px solid #FFB74D",borderRadius:10,padding:16,marginBottom:20,fontSize:13,color:"#E65100"}},
+        "⚠ Supabase non configuré — les documents uploadés ne seront pas stockés en ligne. Configurez SUPABASE_URL et SUPABASE_KEY, puis créez un bucket \"documents\" dans votre projet Supabase."):null,
+
+      filteredDocs.length===0?e("div",{style:{textAlign:"center",padding:60,color:"#999"}},
+        e(Icon,{d:ic.file,size:48,color:"#ddd"}),
+        e("p",{style:{fontSize:14,marginTop:12}},"Aucun document"),
+        e("p",{style:{fontSize:12,color:"#bbb"}},"Cliquez sur \"Ajouter un document\" pour uploader un PV, rapport ou certificat")):
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:16}},
+        filteredDocs.map(function(doc,idx){
+          var realIdx=docs.indexOf(doc);
+          var isPdf=doc.fileType&&doc.fileType.indexOf("pdf")>=0;
+          var isImg=doc.fileType&&doc.fileType.indexOf("image")>=0;
+          return e("div",{key:doc.id,style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,0.08)",border:"1px solid #f0f0f0"}},
+            e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}},
+              e("div",null,
+                e("div",{style:{fontSize:14,fontWeight:700,color:"#0D2137",marginBottom:4}},doc.titre),
+                e("span",{style:{fontSize:11,background:"#FFF3E0",color:"#E65100",padding:"2px 8px",borderRadius:12,fontWeight:600}},doc.typeDoc)),
+              e("div",{style:{display:"flex",gap:4}},
+                doc.fileUrl?e("button",{className:"btn-icon",onClick:function(){window.open(doc.fileUrl,"_blank");},title:"Ouvrir le fichier"},e(Icon,{d:ic.eye,size:14,color:"#1B4965"})):null,
+                canWrite("documents")?e("button",{className:"btn-icon",onClick:function(){openDocForm(realIdx);},title:"Modifier"},e(Icon,{d:ic.edit,size:14,color:"#888"})):null,
+                canDelete("documents")?e("button",{className:"btn-icon danger",onClick:function(){deleteDoc(realIdx);},title:"Supprimer"},e(Icon,{d:ic.trash,size:14,color:"#F44336"})):null)),
+            e("div",{style:{fontSize:12,color:"#666",lineHeight:1.6}},
+              e("div",null,"Équipement: ",e("strong",null,doc.entiteNom||"—")),
+              e("div",null,"Prestataire: ",e("strong",null,doc.prestataire||"—")),
+              e("div",null,"Date: ",e("strong",null,doc.dateDoc?fmtD(doc.dateDoc):"—")),
+              doc.fileName?e("div",{style:{marginTop:6,fontSize:11,color:"#999"}},
+                isPdf?"📄 ":"🖼 ",doc.fileName," (",doc.fileSize?Math.round(doc.fileSize/1024)+" Ko":"",")"):null,
+              doc.observations?e("div",{style:{marginTop:6,fontSize:11,color:"#888",fontStyle:"italic"}},doc.observations):null));
+        }))
+    );
+  }
+
+  // ═══ IMPORT / EXPORT ═══
+  if(page==="importexport"){
+    content=e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 6px",color:"#0D2137"}},"Import / Export des données"),
+      e("p",{style:{fontSize:13,color:"#888",margin:"0 0 20px"}},isAdmin?"Exportez ou importez les données par catégorie.":"Importez les données fournies par l'administrateur."),
+
+      isAdmin?e("div",{style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",marginBottom:20}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          e("h3",{style:{fontSize:15,fontWeight:700,margin:0,color:"#0D2137"}},"Données complètes"),
+          e("div",{style:{display:"flex",gap:8}},
+            e("button",{className:"btn btn-primary",onClick:exportAll},e(Icon,{d:ic.download,size:14,color:"#fff"})," Exporter tout"),
+            e("button",{className:"btn btn-success",onClick:function(){importRef.current&&importRef.current.click();}},e(Icon,{d:ic.upload,size:14,color:"#fff"})," Importer tout")))):null,
+
+      e("div",{style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
+        e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 16px",color:"#0D2137"}},isAdmin?"Export / Import par catégorie":"Import par catégorie"),
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Catégorie","Éléments","Actions"].map(function(h){
+              return e("th",{key:h,style:{padding:"12px 16px",textAlign:h==="Actions"?"right":"left",fontWeight:700,color:"#0D2137",fontSize:11,textTransform:"uppercase"}},h);}))),
+          e("tbody",null,IE_CATEGORIES.map(function(cat){
+            return e("tr",{key:cat.id,style:{borderBottom:"1px solid #f0f0f0"}},
+              e("td",{style:{padding:"14px 16px"}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+                  e(Icon,{d:cat.icon,size:18,color:"#1B4965"}),
+                  e("span",{style:{fontWeight:600,color:"#1B4965"}},cat.label))),
+              e("td",{style:{padding:"14px 16px",color:"#888"}},cat.count()+" élément(s)"),
+              e("td",{style:{padding:"14px 16px",textAlign:"right"}},
+                e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
+                  isAdmin?e("button",{className:"btn btn-primary",style:{fontSize:11,padding:"6px 14px"},onClick:function(){exportCategory(cat.id);}},e(Icon,{d:ic.download,size:12,color:"#fff"})," Exporter"):null,
+                  e("button",{className:"btn btn-success",style:{fontSize:11,padding:"6px 14px"},onClick:function(){setIECurrentCat(cat.id);setTimeout(function(){ieFileRef.current&&ieFileRef.current.click();},100);}},e(Icon,{d:ic.upload,size:12,color:"#fff"})," Importer"))));
+          }))),
+
+        e("input",{type:"file",ref:ieFileRef,accept:".json",style:{display:"none"},onChange:function(ev){
+          var file=ev.target.files[0];
+          if(file&&ieCurrentCat)importCategory(ieCurrentCat,file);
+          ev.target.value="";
+        }}),
+
+        !isAdmin?e("div",{style:{marginTop:16,padding:"12px 16px",background:"#FFF3E0",borderRadius:8,fontSize:12,color:"#E65100"}},
+          "Vous êtes connecté en tant qu'utilisateur. Seul l'administrateur peut exporter les données. Vous pouvez importer les fichiers fournis par votre administrateur."):null,
+
+        isAdmin?e("div",{style:{marginTop:16,padding:"12px 16px",background:"#EEF4FF",borderRadius:8,fontSize:12,color:"#1B4965"}},
+          "Astuce : exportez les données par catégorie pour les partager avec vos collaborateurs. Ils pourront les importer depuis leur interface."):null),
+
+      // Points de restauration
+      e("div",{style:{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",marginTop:20}},
+        e("h3",{style:{fontSize:15,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Points de restauration"),
+        e("p",{style:{fontSize:12,color:"#888",margin:"0 0 16px"}},"Créés automatiquement avant chaque suppression, import ou réinitialisation (max "+MAX_BACKUPS+")"),
+        (function(){var bkps=getBackups();
+          return bkps.length===0?e("div",{style:{padding:20,textAlign:"center",color:"#bbb",fontSize:13}},"Aucun point de restauration"):
+          e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+            e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+              ["Date","Raison","Actions"].map(function(h){return e("th",{key:h,style:{padding:"10px 14px",textAlign:h==="Actions"?"right":"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase"}},h);}))),
+            e("tbody",null,bkps.map(function(bkp,i){
+              return e("tr",{key:bkp.id,style:{borderBottom:"1px solid #f0f0f0"}},
+                e("td",{style:{padding:"10px 14px",fontSize:12,color:"#555"}},new Date(bkp.date).toLocaleString("fr-FR")),
+                e("td",{style:{padding:"10px 14px",fontSize:12,color:"#1B4965",fontWeight:500}},bkp.reason),
+                e("td",{style:{padding:"10px 14px",textAlign:"right"}},
+                  e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
+                    e("button",{className:"btn btn-success",style:{fontSize:10,padding:"4px 10px"},onClick:function(){restoreBackup(i);}},e(Icon,{d:ic.upload,size:10,color:"#fff"})," Restaurer"),
+                    e("button",{className:"btn btn-danger",style:{fontSize:10,padding:"4px 10px"},onClick:function(){deleteBackup(i);}},e(Icon,{d:ic.trash,size:10,color:"#fff"})))));
+            })));
+        })())
+    );
+  }
+
+  // ═══ CORBEILLE ═══
+  if(page==="corbeille"){
+    var typeLabels={vehicule:"Véhicule",gerbeur:"Gerbeur",transpalette:"Transpalette",intervention:"Intervention",infrastructure:"Infrastructure",document:"Document"};
+    var typeColors={vehicule:"#1B4965",gerbeur:"#7B1FA2",transpalette:"#0277BD",intervention:"#E65100",infrastructure:"#2E7D32",document:"#5D4037"};
+
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Corbeille"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},corbeille.length+" élément(s) — les éléments supprimés peuvent être restaurés")),
+        corbeille.length>0?e("button",{className:"btn btn-danger",style:{fontSize:12},onClick:emptyTrash},e(Icon,{d:ic.trash,size:14,color:"#fff"})," Vider la corbeille"):null),
+
+      corbeille.length===0?e("div",{style:{textAlign:"center",padding:60,color:"#999"}},
+        e(Icon,{d:ic.trash,size:48,color:"#ddd"}),
+        e("p",{style:{fontSize:14,marginTop:12}},"La corbeille est vide"),
+        e("p",{style:{fontSize:12,color:"#bbb"}},"Les éléments supprimés apparaîtront ici et pourront être restaurés")):
+
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Type","Détail","Supprimé le","Actions"].map(function(h){
+              return e("th",{key:h,style:{padding:"12px 14px",textAlign:h==="Actions"?"right":"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase"}},h);}))),
+          e("tbody",null,corbeille.map(function(entry,i){
+            var d=entry.data;
+            var detail=entry.type==="vehicule"?(d.marque+" "+d.modele+" — "+d.matricule):
+              entry.type==="gerbeur"?("Gerbeur "+d.type+" — "+d.code):
+              entry.type==="transpalette"?("Transpalette — "+d.code):
+              entry.type==="intervention"?(d.id+" — "+d.equipement+" "+d.code):
+              entry.type==="infrastructure"?(d.categorie+" — "+d.designation):
+              entry.type==="document"?(d.titre||d.fileName||"Document"):"—";
+            return e("tr",{key:entry.id,style:{borderBottom:"1px solid #f0f0f0"}},
+              e("td",{style:{padding:"12px 14px"}},
+                e("span",{style:{background:typeColors[entry.type]||"#888",color:"#fff",padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:700}},typeLabels[entry.type]||entry.type)),
+              e("td",{style:{padding:"12px 14px",fontWeight:500,color:"#333"}},detail),
+              e("td",{style:{padding:"12px 14px",color:"#888",fontSize:11}},new Date(entry.deletedAt).toLocaleString("fr-FR")),
+              e("td",{style:{padding:"12px 14px",textAlign:"right"}},
+                e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
+                  e("button",{className:"btn btn-success",style:{fontSize:11,padding:"5px 12px"},onClick:function(){restoreFromTrash(i);}},e(Icon,{d:ic.upload,size:12,color:"#fff"})," Restaurer"),
+                  e("button",{className:"btn btn-danger",style:{fontSize:11,padding:"5px 12px"},onClick:function(){permanentDelete(i);}},e(Icon,{d:ic.trash,size:12,color:"#fff"})," Définitif"))));
+          }))))
+    );
+  }
+
+  // ═══ JOURNAL DES MODIFICATIONS ═══
+  if(page==="journal"&&!isAdmin){
+    content=e("div",{style:{textAlign:"center",padding:80,color:"#999"}},
+      e(Icon,{d:ic.alert,size:48,color:"#EF9A9A"}),
+      e("p",{style:{fontSize:16,fontWeight:700,color:"#C62828",marginTop:16}},"Accès réservé à l'administrateur"),
+      e("p",{style:{fontSize:13,color:"#aaa"}},"Cette section est accessible uniquement au compte Administrateur."));
+  }
+  if(page==="journal"&&isAdmin){
+    var actionColors={AJOUT:"#2E7D32",MODIFICATION:"#E65100",SUPPRESSION:"#C62828"};
+    var actionBg={AJOUT:"#E8F5E9",MODIFICATION:"#FFF3E0",SUPPRESSION:"#FFEBEE"};
+    var entiteLabels={vehicule:"Véhicule",gerbeur:"Gerbeur",transpalette:"Transpalette",intervention:"Intervention",infrastructure:"Infrastructure",document:"Document"};
+    var filteredLog=auditLog.filter(function(ent){
+      if(auditFilter.action&&ent.action!==auditFilter.action)return false;
+      if(auditFilter.user&&(ent.user_nom||"").toLowerCase().indexOf(auditFilter.user.toLowerCase())<0)return false;
+      if(auditFilter.entite&&ent.entite_type!==auditFilter.entite)return false;
+      return true;
+    });
+    function refreshAuditLog(){
+      if(!SYNC_ENABLED)return;
+      fetch(SUPABASE_URL+"/rest/v1/audit_log?module=eq.maintenance&order=ts.desc&limit=150",{headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}).then(function(r){return r.json();}).then(function(rows){if(Array.isArray(rows))setAuditLog(rows);}).catch(function(){});
+    }
+    content=e("div",null,
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+        e("div",null,
+          e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 4px",color:"#0D2137"}},"Journal des modifications"),
+          e("p",{style:{fontSize:13,color:"#888",margin:0}},"Traçabilité BPD — Toutes les modifications enregistrées (",auditLog.length,")")),
+        e("button",{className:"btn btn-secondary",style:{fontSize:12},onClick:refreshAuditLog},e(Icon,{d:ic.reset,size:14,color:"#555"})," Actualiser")),
+      e("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}},
+        e("select",{value:auditFilter.action,onChange:function(ev){setAuditFilter(Object.assign({},auditFilter,{action:ev.target.value}));},style:{padding:"7px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,color:"#333",background:"#fff"}},
+          e("option",{value:""},"Toutes les actions"),
+          e("option",{value:"AJOUT"},"Ajout"),
+          e("option",{value:"MODIFICATION"},"Modification"),
+          e("option",{value:"SUPPRESSION"},"Suppression")),
+        e("select",{value:auditFilter.entite,onChange:function(ev){setAuditFilter(Object.assign({},auditFilter,{entite:ev.target.value}));},style:{padding:"7px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,color:"#333",background:"#fff"}},
+          e("option",{value:""},"Tous les types"),
+          e("option",{value:"vehicule"},"Véhicule"),
+          e("option",{value:"gerbeur"},"Gerbeur"),
+          e("option",{value:"transpalette"},"Transpalette"),
+          e("option",{value:"intervention"},"Intervention"),
+          e("option",{value:"infrastructure"},"Infrastructure"),
+          e("option",{value:"document"},"Document")),
+        e("input",{type:"text",placeholder:"Filtrer par utilisateur...",value:auditFilter.user,onChange:function(ev){setAuditFilter(Object.assign({},auditFilter,{user:ev.target.value}));},style:{padding:"7px 10px",border:"1px solid #ddd",borderRadius:8,fontSize:12,minWidth:180}})),
+      filteredLog.length===0?e("div",{style:{textAlign:"center",padding:60,color:"#999"}},
+        e(Icon,{d:ic.journal,size:48,color:"#ddd"}),
+        e("p",{style:{fontSize:14,marginTop:12}},"Aucune modification enregistrée"),
+        e("p",{style:{fontSize:12,color:"#bbb"}},SYNC_ENABLED?"Les modifications apparaîtront ici après la prochaine action":"Connexion Supabase requise")):
+      e("div",{style:{background:"#fff",borderRadius:12,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"auto"}},
+        e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+          e("thead",null,e("tr",{style:{background:"#F7F8FA",borderBottom:"2px solid #E8EBF0"}},
+            ["Date / Heure","Utilisateur","Action","Type","Entité","Détails"].map(function(h){
+              return e("th",{key:h,style:{padding:"12px 14px",textAlign:"left",fontWeight:700,color:"#0D2137",fontSize:10,textTransform:"uppercase",whiteSpace:"nowrap"}},h);}))),
+          e("tbody",null,filteredLog.map(function(ent,i){
+            var isExp=expandedAudit===i;
+            var actColor=actionColors[ent.action]||"#888";
+            var actBgColor=actionBg[ent.action]||"#F5F5F5";
+            var mods=Array.isArray(ent.modifications)?ent.modifications:[];
+            return [
+              e("tr",{key:"r"+i,style:{borderBottom:isExp?"none":"1px solid #f0f0f0",cursor:mods.length>0?"pointer":"default",background:isExp?"#FAFBFF":"transparent"},onClick:function(){setExpandedAudit(isExp?null:i);}},
+                e("td",{style:{padding:"10px 14px",color:"#555",fontSize:11,whiteSpace:"nowrap"}},new Date(ent.ts).toLocaleString("fr-FR")),
+                e("td",{style:{padding:"10px 14px",fontWeight:600,color:"#333"}},ent.user_nom||ent.user_id||"—"),
+                e("td",{style:{padding:"10px 14px"}},e("span",{style:{background:actBgColor,color:actColor,padding:"3px 10px",borderRadius:12,fontSize:10,fontWeight:700}},ent.action||"—")),
+                e("td",{style:{padding:"10px 14px",color:"#666",fontSize:11}},entiteLabels[ent.entite_type]||ent.entite_type||"—"),
+                e("td",{style:{padding:"10px 14px",fontWeight:500,color:"#333"}},ent.entite_label||ent.entite_id||"—"),
+                e("td",{style:{padding:"10px 14px",color:"#888",fontSize:11}},mods.length>0?e("span",{style:{color:"#1B4965",fontWeight:600,cursor:"pointer"}},mods.length+" champ(s) ",isExp?"▲":"▼"):"—")),
+              isExp&&mods.length>0?e("tr",{key:"e"+i,style:{background:"#F0F4FF",borderBottom:"1px solid #ddd"}},
+                e("td",{colSpan:6,style:{padding:"12px 24px"}},
+                  e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:11}},
+                    e("thead",null,e("tr",{style:{borderBottom:"1px solid #C5D3FF"}},
+                      [["CHAMP","20%"],["AVANT","38%"],["APRÈS","38%"]].map(function(h){return e("th",{key:h[0],style:{textAlign:"left",padding:"4px 8px",fontSize:10,color:"#7B93D0",fontWeight:700,width:h[1]}},h[0]);}))),
+                    e("tbody",null,mods.map(function(m,j){
+                      return e("tr",{key:j,style:{borderTop:"1px solid #E0E8FF"}},
+                        e("td",{style:{padding:"5px 8px",fontWeight:600,color:"#444",verticalAlign:"top"}},m.champ),
+                        e("td",{style:{padding:"5px 8px",color:"#B71C1C",background:"#FFF5F5",wordBreak:"break-word",verticalAlign:"top"}},m.avant||"—"),
+                        e("td",{style:{padding:"5px 8px",color:"#1B5E20",background:"#F1F8E9",wordBreak:"break-word",verticalAlign:"top"}},m.apres||"—"));
+                    }))))) : null
+            ];
+          }))))
+    );
+  }
+
+  // ═══ PARAMETRES SOCIETE ═══
+  if(page==="parametres"){
+    var currentSocForm=socForm||Object.assign({},soc);
+    content=e("div",null,
+      e("h2",{style:{fontSize:20,fontWeight:700,margin:"0 0 20px",color:"#0D2137"}},"Paramètres Société"),
+      e("div",{style:{background:"#fff",borderRadius:12,padding:28,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",maxWidth:700}},
+        e("div",{className:"form-row"},
+          e(Field,{label:"Nom de la société",value:currentSocForm.nom,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{nom:v}));}}),
+          e(Field,{label:"Secteur d'activité",value:currentSocForm.secteur,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{secteur:v}));}})),
+        e("div",{className:"form-row"},
+          e(Field,{label:"Adresse",value:currentSocForm.adresse,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{adresse:v}));}}),
+          e(Field,{label:"Téléphone",value:currentSocForm.telephone,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{telephone:v}));}})),
+        e("div",{className:"form-row"},
+          e(Field,{label:"Email",value:currentSocForm.email,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{email:v}));}}),
+          e(Field,{label:"Date de création",type:"date",value:currentSocForm.dateCreation,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{dateCreation:v}));}})),
+        e("div",{className:"form-row"},
+          e(Field,{label:"Responsable Maintenance",value:currentSocForm.responsableMaintenance,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{responsableMaintenance:v}));}}),
+          e(Field,{label:"Responsable Qualité",value:currentSocForm.responsableQualite,onChange:function(v){setSocForm(Object.assign({},currentSocForm,{responsableQualite:v}));}})),
+        e("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:20}},
+          e("button",{className:"btn btn-success",onClick:function(){
+            var toSave=socForm||Object.assign({},soc);
+            setSoc(toSave);
+            setSocForm(null);
+            showToast("Paramètres sauvegardés");
+          }},"Enregistrer les paramètres")))
+    );
+  }
+
+  // ═══ MODALS ═══
+  var modalEl=null;
+
+  if(modal==="veh"){
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier le véhicule":"Ajouter un véhicule",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},e(Field,{label:"Marque",value:ed.marque,onChange:function(v){setEd(Object.assign({},ed,{marque:v}));}}),e(Field,{label:"Modèle",value:ed.modele,onChange:function(v){setEd(Object.assign({},ed,{modele:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Matricule *",value:ed.matricule,onChange:function(v){setEd(Object.assign({},ed,{matricule:v}));}}),e(Field,{label:"Chauffeur",value:ed.chauffeur,onChange:function(v){setEd(Object.assign({},ed,{chauffeur:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Kilométrage",type:"number",value:ed.km,onChange:function(v){setEd(Object.assign({},ed,{km:+v}));}}),e(Field,{label:"Année",type:"number",value:ed.annee,onChange:function(v){setEd(Object.assign({},ed,{annee:+v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Date vidange",type:"date",value:ed.dateVidange,onChange:function(v){setEd(Object.assign({},ed,{dateVidange:v}));}}),e(Field,{label:"Proch. vidange (km)",type:"number",value:ed.prochaineVidange,onChange:function(v){setEd(Object.assign({},ed,{prochaineVidange:+v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Proch. CT",type:"date",value:ed.prochaineCT,onChange:function(v){setEd(Object.assign({},ed,{prochaineCT:v}));}}),e(Field,{label:"Proch. Vignette",type:"date",value:ed.prochaineVignette,onChange:function(v){setEd(Object.assign({},ed,{prochaineVignette:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Proch. Assurance",type:"date",value:ed.prochaineAssurance,onChange:function(v){setEd(Object.assign({},ed,{prochaineAssurance:v}));}}),e(Field,{label:"Date nettoyage",type:"date",value:ed.dateNettoyage,onChange:function(v){setEd(Object.assign({},ed,{dateNettoyage:v}));}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveVeh},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="gerb"){
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier le gerbeur":"Ajouter un gerbeur",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},e(Field,{label:"Code *",value:ed.code,onChange:function(v){setEd(Object.assign({},ed,{code:v}));}}),e(Field,{label:"Type",value:ed.type,options:["électrique","manuel"],onChange:function(v){setEd(Object.assign({},ed,{type:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Emplacement",value:ed.emplacement,onChange:function(v){setEd(Object.assign({},ed,{emplacement:v}));}}),e(Field,{label:"État",value:ed.etat,options:["Opérationnel","En panne","En maintenance","Hors service"],onChange:function(v){setEd(Object.assign({},ed,{etat:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Capacité (kg)",type:"number",value:ed.capacite,onChange:function(v){setEd(Object.assign({},ed,{capacite:+v}));}}),e(Field,{label:"Heures d'utilisation",type:"number",value:ed.heures,onChange:function(v){setEd(Object.assign({},ed,{heures:+v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Dern. maintenance",type:"date",value:ed.dernMaint,onChange:function(v){setEd(Object.assign({},ed,{dernMaint:v}));}}),e(Field,{label:"Proch. maintenance",type:"date",value:ed.prochMaint,onChange:function(v){setEd(Object.assign({},ed,{prochMaint:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Batterie",value:ed.batterie,options:["Bon","Dégradé","À remplacer"],onChange:function(v){setEd(Object.assign({},ed,{batterie:v}));}}),e(Field,{label:"Hydraulique",value:ed.hydraulique,options:["Bon","À surveiller","Défaillant"],onChange:function(v){setEd(Object.assign({},ed,{hydraulique:v}));}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveGerb},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="tp"){
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier le transpalette":"Ajouter un transpalette",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},e(Field,{label:"Code *",value:ed.code,onChange:function(v){setEd(Object.assign({},ed,{code:v}));}}),e(Field,{label:"Emplacement",value:ed.emplacement,onChange:function(v){setEd(Object.assign({},ed,{emplacement:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"État",value:ed.etat,options:["Opérationnel","En panne","En maintenance"],onChange:function(v){setEd(Object.assign({},ed,{etat:v}));}}),e(Field,{label:"Hydraulique",value:ed.hydraulique,options:["Bon","À surveiller","Défaillant"],onChange:function(v){setEd(Object.assign({},ed,{hydraulique:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Problème / Observation",value:ed.probleme,onChange:function(v){setEd(Object.assign({},ed,{probleme:v}));}}),e(Field,{label:"Date dern. intervention",type:"date",value:ed.date,onChange:function(v){setEd(Object.assign({},ed,{date:v}));}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveTP},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="inter"){
+    var allEquips=[];
+    veh.forEach(function(v){allEquips.push({label:"Véhicule — "+v.marque+" "+v.modele+" ("+v.matricule+")",equipement:"Véhicule",code:v.matricule,lieu:"Parc auto"});});
+    gerb.forEach(function(g){allEquips.push({label:"Gerbeur "+g.type+" — "+g.code,equipement:"Gerbeur "+g.type,code:g.code,lieu:g.emplacement});});
+    tp.forEach(function(t){allEquips.push({label:"Transpalette — "+t.code,equipement:"Transpalette",code:t.code,lieu:t.emplacement});});
+    infra.forEach(function(f){allEquips.push({label:f.categorie+" — "+f.designation,equipement:f.categorie,code:f.id,lieu:f.emplacement});});
+    var equipOptions=[""].concat(allEquips.map(function(eq){return eq.label;}));
+    var currentLabel=allEquips.find(function(eq){return eq.code===ed.code&&eq.equipement===ed.equipement;});
+    var selVal=currentLabel?currentLabel.label:"";
+
+    function onEquipSelect(label){
+      var found=allEquips.find(function(eq){return eq.label===label;});
+      if(found){setEd(Object.assign({},ed,{equipement:found.equipement,code:found.code,lieu:found.lieu}));}
+      else{setEd(Object.assign({},ed,{equipement:"",code:"",lieu:""}));}
+    }
+
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier l'intervention":"Ajouter une intervention",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},e(Field,{label:"Date *",type:"date",value:ed.date,onChange:function(v){setEd(Object.assign({},ed,{date:v}));}}),e(Field,{label:"Type",value:ed.type,options:["Corrective","Préventive"],onChange:function(v){setEd(Object.assign({},ed,{type:v}));}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"ÉQUIPEMENT *"),
+        e("select",{value:selVal,onChange:function(ev){onEquipSelect(ev.target.value);},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}},
+          e("option",{value:""},"— Sélectionner un équipement —"),
+          e("optgroup",{label:"Véhicules"},veh.map(function(v){var l="Véhicule — "+v.marque+" "+v.modele+" ("+v.matricule+")";return e("option",{key:l,value:l},l);})),
+          e("optgroup",{label:"Gerbeurs"},gerb.map(function(g){var l="Gerbeur "+g.type+" — "+g.code;return e("option",{key:l,value:l},l);})),
+          e("optgroup",{label:"Transpalettes"},tp.map(function(t){var l="Transpalette — "+t.code;return e("option",{key:l,value:l},l);})),
+          e("optgroup",{label:"Infrastructure"},infra.map(function(f){var l=f.categorie+" — "+f.designation;return e("option",{key:l,value:l},l);})))),
+      e("div",{className:"form-row"},
+        e("div",{className:"form-group"},e("label",null,"CODE (AUTO)"),e("input",{value:ed.code||"",readOnly:true,style:{padding:"9px 12px",border:"1px solid #eee",borderRadius:8,fontSize:13,background:"#F7F8FA",color:"#555"}})),
+        e("div",{className:"form-group"},e("label",null,"LIEU (AUTO)"),e("input",{value:ed.lieu||"",readOnly:true,style:{padding:"9px 12px",border:"1px solid #eee",borderRadius:8,fontSize:13,background:"#F7F8FA",color:"#555"}}))),
+      e("div",{className:"form-row"},e(Field,{label:"Problème",value:ed.probleme,onChange:function(v){setEd(Object.assign({},ed,{probleme:v}));}}),e(Field,{label:"Action réalisée",value:ed.action,onChange:function(v){setEd(Object.assign({},ed,{action:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Technicien",value:ed.tech,onChange:function(v){setEd(Object.assign({},ed,{tech:v}));}}),e(Field,{label:"Durée (h)",type:"number",value:ed.duree,onChange:function(v){setEd(Object.assign({},ed,{duree:+v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Coût (DH)",type:"number",value:ed.cout,onChange:function(v){setEd(Object.assign({},ed,{cout:+v}));}}),e(Field,{label:"Statut",value:ed.statut,options:["Planifié","En cours","En attente","Résolu"],onChange:function(v){setEd(Object.assign({},ed,{statut:v}));}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveInter},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="infra"){
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier l'équipement":"Ajouter un équipement",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},
+        e(Field,{label:"Catégorie *",value:ed.categorie,options:["Ascenseur","Monte-charge","Groupe électrogène","Climatisation","Toboggan","Quai","Porte sectionnelle","Système anti-incendie","Onduleur","Compresseur"],onChange:function(v){setEd(Object.assign({},ed,{categorie:v}));}}),
+        e(Field,{label:"Désignation *",value:ed.designation,onChange:function(v){setEd(Object.assign({},ed,{designation:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Emplacement",value:ed.emplacement,onChange:function(v){setEd(Object.assign({},ed,{emplacement:v}));}}),
+        e(Field,{label:"État",value:ed.etat,options:["Opérationnel","En panne","En maintenance","Hors service"],onChange:function(v){setEd(Object.assign({},ed,{etat:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Marque",value:ed.marque,onChange:function(v){setEd(Object.assign({},ed,{marque:v}));}}),
+        e(Field,{label:"Modèle",value:ed.modele,onChange:function(v){setEd(Object.assign({},ed,{modele:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Date mise en service",type:"date",value:ed.dateMiseService,onChange:function(v){setEd(Object.assign({},ed,{dateMiseService:v}));}}),
+        e(Field,{label:"Périodicité",value:ed.periodicite,options:["Mensuelle","Trimestrielle","Semestrielle","Annuelle"],onChange:function(v){setEd(Object.assign({},ed,{periodicite:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Dernière maintenance",type:"date",value:ed.dernMaint,onChange:function(v){setEd(Object.assign({},ed,{dernMaint:v}));}}),
+        e(Field,{label:"Prochaine maintenance",type:"date",value:ed.prochMaint,onChange:function(v){setEd(Object.assign({},ed,{prochMaint:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Prestataire",value:ed.prestataire,onChange:function(v){setEd(Object.assign({},ed,{prestataire:v}));}}),
+        e(Field,{label:"Contrat",value:ed.contrat,options:["Oui","Non"],onChange:function(v){setEd(Object.assign({},ed,{contrat:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Prochain contrôle",type:"date",value:ed.prochControle==="—"?"":ed.prochControle,onChange:function(v){setEd(Object.assign({},ed,{prochControle:v}));}}),
+        e(Field,{label:"Observations",value:ed.observations,onChange:function(v){setEd(Object.assign({},ed,{observations:v}));}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveInfra},edIdx>=0?"Enregistrer":"Ajouter")));
+  }
+
+  if(modal==="doc"){
+    var docEntites=getAllEntites();
+    var filteredEntites=docEntites.filter(function(ent){return ent.type===ed.entiteType;});
+    modalEl=e(Modal,{title:edIdx>=0?"Modifier le document":"Ajouter un document prestataire",onClose:function(){setModal(null);}},
+      e("div",{className:"form-row"},
+        e(Field,{label:"Titre du document *",value:ed.titre,onChange:function(v){setEd(Object.assign({},ed,{titre:v}));}}),
+        e(Field,{label:"Type de document *",value:ed.typeDoc,options:DOC_TYPES,onChange:function(v){setEd(Object.assign({},ed,{typeDoc:v}));}})),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Type d'équipement",value:ed.entiteType,options:ENTITE_TYPES,onChange:function(v){setEd(Object.assign({},ed,{entiteType:v,entiteId:"",entiteNom:""}));}}),
+        e("div",{className:"form-group"},e("label",null,"ÉQUIPEMENT *"),
+          e("select",{value:ed.entiteId||"",onChange:function(ev){var sel=docEntites.find(function(ent){return ent.id===ev.target.value;});setEd(Object.assign({},ed,{entiteId:sel?sel.id:"",entiteNom:sel?sel.nom:""}));},style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}},
+            e("option",{value:""},"— Sélectionner —"),
+            filteredEntites.map(function(ent){return e("option",{key:ent.id,value:ent.id},ent.nom);})))),
+      e("div",{className:"form-row"},
+        e(Field,{label:"Prestataire",value:ed.prestataire,onChange:function(v){setEd(Object.assign({},ed,{prestataire:v}));}}),
+        e(Field,{label:"Date du document",type:"date",value:ed.dateDoc,onChange:function(v){setEd(Object.assign({},ed,{dateDoc:v}));}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"FICHIER (PDF, PNG, JPG) "+(edIdx>=0?"— laisser vide pour garder l'actuel":"*")),
+        e("input",{type:"file",ref:docFileRef,accept:".pdf,.png,.jpg,.jpeg",style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13}})),
+      e("div",{className:"form-group",style:{marginBottom:12}},
+        e("label",null,"OBSERVATIONS"),
+        e("textarea",{value:ed.observations||"",onChange:function(ev){setEd(Object.assign({},ed,{observations:ev.target.value}));},rows:2,style:{padding:"9px 12px",border:"1px solid #ddd",borderRadius:8,fontSize:13,resize:"vertical"}})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
+        e("button",{className:"btn btn-success",onClick:saveDoc,disabled:isUploading},isUploading?"Upload en cours...":edIdx>=0?"Enregistrer":"Uploader")));
+  }
+
+  var cfs=useState("");var confInput=cfs[0];var setConfInput=cfs[1];
+  var confEl=conf?e("div",{className:"modal-overlay",onClick:function(){setConf(null);setConfInput("");}},
+    e("div",{className:"modal-box",style:{width:420,textAlign:"center"},onClick:function(ev){ev.stopPropagation();}},
+      e(Icon,{d:ic.alert,size:40,color:"#F44336"}),
+      e("p",{style:{fontSize:14,color:"#333",margin:"16px 0 16px",whiteSpace:"pre-line"}},conf.msg),
+      e("p",{style:{fontSize:12,color:"#888",margin:"0 0 12px"}},'Tapez SUPPRIMER pour confirmer :'),
+      e("input",{value:confInput,onChange:function(ev){setConfInput(ev.target.value);},placeholder:"SUPPRIMER",style:{width:"100%",padding:"10px 14px",border:"2px solid #ddd",borderRadius:8,fontSize:14,textAlign:"center",marginBottom:16,fontFamily:"inherit",letterSpacing:"0.1em"}}),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"center"}},
+        e("button",{className:"btn btn-secondary",onClick:function(){setConf(null);setConfInput("");}},"Annuler"),
+        e("button",{className:"btn btn-danger",style:{opacity:confInput==="SUPPRIMER"?1:0.4,pointerEvents:confInput==="SUPPRIMER"?"auto":"none"},onClick:function(){conf.fn();setConfInput("");}},"Confirmer la suppression")))):null;
+
+  var toastEl=toast?e("div",{className:"toast"},toast):null;
+
+  // ═══ LAYOUT ═══
+  var isEmbed=window.location.search.indexOf("embed=1")>=0;
+
+  return e("div",{style:{minHeight:"100vh",background:"#F7F8FA"}},
+    !isEmbed?e("header",{style:{background:"linear-gradient(135deg,#0D2137 0%,#1B4965 100%)",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}},
+      e("div",{style:{display:"flex",alignItems:"center",gap:12}},
+        e("a",{href:"index.html",style:{width:42,height:42,borderRadius:10,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",textDecoration:"none",boxShadow:"0 1px 4px rgba(0,0,0,0.15)"},title:"Retour au portail"},
+          e("img",{src:"logo-sprl.jpg",alt:"SPRL",style:{width:34,height:28,objectFit:"contain"}})),
+        e("div",null,
+          e("div",{style:{fontSize:18,fontWeight:700}},soc.nom+" — Maintenance"),
+          e("div",{style:{fontSize:11,opacity:0.7}},"GESTION MAINTENANCE ASSISTÉE"))),
+      e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        isAdmin?e("button",{onClick:handleReset,style:{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",padding:"7px 14px",borderRadius:8,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontWeight:600},title:"Réinitialiser les données"},
+          e(Icon,{d:ic.close,size:14,color:"#fff"})," Réinitialiser"):null,
+        e("button",{className:"btn-icon",style:{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)"},onClick:function(){setPage("importexport");},title:"Import / Export"},e(Icon,{d:ic.download,size:16,color:"#fff"})),
+        alertes.length>0?e("span",{style:{background:"#F44336",color:"#fff",padding:"4px 10px",borderRadius:12,fontSize:11,fontWeight:700}},alertes.length+" alertes"):null,
+        e("div",{style:{fontSize:12,opacity:0.5}},"Responsable: "+soc.responsableMaintenance))):null,
+
+    e("div",{style:{display:"flex",minHeight:isEmbed?"100vh":"calc(100vh - 70px)"}},
+      e("nav",{style:{width:220,background:"#fff",borderRight:"1px solid #E8EBF0",padding:"12px 0",flexShrink:0}},
+        navItems.map(function(n){
+          return e("button",{key:n.id,onClick:function(){setPage(n.id);},
+            style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 20px",border:"none",background:page===n.id?"#FFF3E0":"transparent",color:page===n.id?"#E65100":"#555",fontWeight:page===n.id?600:400,fontSize:13,cursor:"pointer",borderLeft:page===n.id?"3px solid #E65100":"3px solid transparent",textAlign:"left",transition:"all 0.15s"}},
+            e(Icon,{d:n.icon,size:17,color:page===n.id?"#E65100":"#888"}),n.label);
+        }),
+        !isEmbed?e("div",{style:{borderTop:"1px solid #eee",margin:"12px 20px",padding:"12px 0"}},
+          e("a",{href:"index.html",style:{display:"flex",alignItems:"center",gap:8,color:"#1B4965",fontSize:12,fontWeight:600,textDecoration:"none"}},
+            e(Icon,{d:ic.home,size:14,color:"#1B4965"}),"Retour au portail")):null),
+      e("main",{style:{flex:1,padding:"24px 28px",overflow:"auto",maxHeight:isEmbed?"100vh":"calc(100vh - 70px)"}},
+        !isOnline?e("div",{style:{background:"linear-gradient(135deg,#C62828,#E53935)",color:"#fff",padding:"12px 20px",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:12,boxShadow:"0 4px 12px rgba(198,40,40,0.3)"}},
+          e("span",{style:{width:12,height:12,borderRadius:"50%",background:"#fff",display:"inline-block",animation:"pulse 1.5s infinite"}}),
+          e("div",null,
+            e("div",{style:{fontWeight:700,fontSize:14}},"Mode hors ligne"),
+            e("div",{style:{fontSize:12,opacity:0.9}},"Vos modifications sont sauvegardees localement. Elles seront synchronisees au retour de la connexion."))):null,
+        notifBanner,content)),
+
+    modalEl,confEl,toastEl,
+
+    syncError&&isOnline?e("div",{style:{position:"fixed",bottom:60,left:24,display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:20,fontSize:11,fontWeight:600,zIndex:2000,background:"#FFF8E1",color:"#E65100",border:"1px solid #FFE082",boxShadow:"0 2px 8px rgba(0,0,0,0.1)",maxWidth:260}},
+      e("span",{style:{width:8,height:8,borderRadius:"50%",background:"#FF9800",display:"inline-block",flexShrink:0}}),
+      "Erreur sauvegarde cloud — données locales OK"):null,
+
+    e("div",{style:{position:"fixed",bottom:24,left:24,display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:20,fontSize:11,fontWeight:600,zIndex:2000,background:isOnline?"#E8F5E9":"#FFEBEE",color:isOnline?"#2E7D32":"#C62828",border:isOnline?"1px solid #A5D6A7":"1px solid #EF9A9A",boxShadow:"0 2px 8px rgba(0,0,0,0.1)"}},
+      e("span",{style:{width:8,height:8,borderRadius:"50%",background:isOnline?"#4CAF50":"#F44336",display:"inline-block"}}),
+      isOnline?"En ligne":"Hors ligne"),
+
+    // Fusion automatique — le modal de conflit a été remplacé par des toasts
+    null,
+
+    e("input",{type:"file",ref:importRef,accept:".json",style:{display:"none"},onChange:importData}));
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(MaintApp));
+</script>
+</body>
+</html>

@@ -933,6 +933,7 @@ function MetroGest() {
 
   useEffect(function(){
     if(!SYNC_ENABLED)return;
+    if(isAdmin){setLockState("owner");return;}
     checkLock(function(lock){
       var now=new Date();
       var expired=!lock||!lock.locked||new Date(lock.expires_at)<now;
@@ -941,7 +942,7 @@ function MetroGest() {
     });
   },[]);
   useEffect(function(){
-    if(lockState!=="owner"||!SYNC_ENABLED)return;
+    if(lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
     var t=setInterval(function(){acquireLock(currentUser);},2*60*1000);
     return function(){clearInterval(t);};
   },[lockState]);
@@ -957,7 +958,7 @@ function MetroGest() {
     return function(){clearInterval(t);};
   },[lockState]);
   useEffect(function(){
-    if(lockState!=="owner"||!SYNC_ENABLED)return;
+    if(lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
     var handler=function(){releaseLock(true);};
     window.addEventListener("beforeunload",handler);
     return function(){window.removeEventListener("beforeunload",handler);releaseLock(false);};

@@ -915,6 +915,7 @@ function MaintApp(){
 
   useEffect(function(){
     if(!SYNC_ENABLED)return;
+    if(isAdmin){setLockState("owner");return;}
     checkLock(function(lock){
       var now=new Date();
       var expired=!lock||!lock.locked||new Date(lock.expires_at)<now;
@@ -923,7 +924,7 @@ function MaintApp(){
     });
   },[]);
   useEffect(function(){
-    if(lockState!=="owner"||!SYNC_ENABLED)return;
+    if(lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
     var t=setInterval(function(){acquireLock(currentUser);},2*60*1000);
     return function(){clearInterval(t);};
   },[lockState]);
@@ -939,7 +940,7 @@ function MaintApp(){
     return function(){clearInterval(t);};
   },[lockState]);
   useEffect(function(){
-    if(lockState!=="owner"||!SYNC_ENABLED)return;
+    if(lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
     var handler=function(){releaseLock(true);};
     window.addEventListener("beforeunload",handler);
     return function(){window.removeEventListener("beforeunload",handler);releaseLock(false);};
@@ -1865,6 +1866,8 @@ function MaintApp(){
       e("div",{className:"form-row"},e(Field,{label:"Capacité (kg)",type:"number",value:ed.capacite,onChange:function(v){setEd(Object.assign({},ed,{capacite:+v}));}}),e(Field,{label:"Heures d'utilisation",type:"number",value:ed.heures,onChange:function(v){setEd(Object.assign({},ed,{heures:+v}));}})),
       e("div",{className:"form-row"},e(Field,{label:"Dern. maintenance",type:"date",value:ed.dernMaint,onChange:function(v){setEd(Object.assign({},ed,{dernMaint:v}));}}),e(Field,{label:"Proch. maintenance",type:"date",value:ed.prochMaint,onChange:function(v){setEd(Object.assign({},ed,{prochMaint:v}));}})),
       e("div",{className:"form-row"},e(Field,{label:"Batterie",value:ed.batterie,options:["Bon","Dégradé","À remplacer"],onChange:function(v){setEd(Object.assign({},ed,{batterie:v}));}}),e(Field,{label:"Hydraulique",value:ed.hydraulique,options:["Bon","À surveiller","Défaillant"],onChange:function(v){setEd(Object.assign({},ed,{hydraulique:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Chaîne",value:ed.chaine,options:["Bon","Usé","À remplacer"],onChange:function(v){setEd(Object.assign({},ed,{chaine:v}));}}),e(Field,{label:"Date VGP",type:"date",value:ed.dateVGP,onChange:function(v){setEd(Object.assign({},ed,{dateVGP:v}));}})),
+      e("div",{className:"form-row"},e(Field,{label:"Prochaine VGP",type:"date",value:ed.prochVGP,onChange:function(v){setEd(Object.assign({},ed,{prochVGP:v}));}})),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:20}},
         e("button",{className:"btn btn-secondary",onClick:function(){setModal(null);}},"Annuler"),
         e("button",{className:"btn btn-success",onClick:saveGerb},edIdx>=0?"Enregistrer":"Ajouter")));

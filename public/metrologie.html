@@ -927,12 +927,13 @@ function MetroGest() {
   var liArr=useState(null);var lockInfo=liArr[0];var setLockInfo=liArr[1];
 
   var currentUser=(function(){try{var s=sessionStorage.getItem("ps_user")||localStorage.getItem("ps_user");return s?JSON.parse(s):null;}catch(x){return null;}})();
-  if(!currentUser){window.location.replace("index.html");return null;}
-  var userRole=currentUser.role;
+  var noUser=!currentUser;
+  useEffect(function(){if(noUser)window.location.replace("index.html");},[noUser]);
+  var userRole=currentUser?currentUser.role:null;
   var isAdmin=userRole==="admin";
 
   useEffect(function(){
-    if(!SYNC_ENABLED)return;
+    if(noUser||!SYNC_ENABLED)return;
     if(isAdmin){setLockState("owner");return;}
     checkLock(function(lock){
       var now=new Date();
@@ -942,12 +943,12 @@ function MetroGest() {
     });
   },[]);
   useEffect(function(){
-    if(lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
+    if(noUser||lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
     var t=setInterval(function(){acquireLock(currentUser);},2*60*1000);
     return function(){clearInterval(t);};
   },[lockState]);
   useEffect(function(){
-    if(lockState!=="blocked"||!SYNC_ENABLED)return;
+    if(noUser||lockState!=="blocked"||!SYNC_ENABLED)return;
     var t=setInterval(function(){
       checkLock(function(lock){
         var now=new Date();
@@ -958,7 +959,7 @@ function MetroGest() {
     return function(){clearInterval(t);};
   },[lockState]);
   useEffect(function(){
-    if(lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
+    if(noUser||lockState!=="owner"||!SYNC_ENABLED||isAdmin)return;
     var handler=function(){releaseLock(true);};
     window.addEventListener("beforeunload",handler);
     return function(){window.removeEventListener("beforeunload",handler);releaseLock(false);};
@@ -1029,9 +1030,10 @@ function MetroGest() {
       return e("span",{key:i,onClick:function(){setPage(n.page);},style:{fontSize:11,color:n.color,fontWeight:600,cursor:"pointer",padding:"2px 8px",background:n.bg,borderRadius:6,border:"1px solid "+n.border}},n.text);
     })):null;
 
-  if(lockState==="checking")return e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#F0F4F8"}},
+  var lockScreen = null;
+  if(lockState==="checking")lockScreen = e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#F0F4F8"}},
     e("div",{style:{textAlign:"center",color:"#4A6785",fontSize:14}},"Vérification de l'accès…"));
-  if(lockState==="blocked")return e(LockScreen,{lockInfo:lockInfo,onRetry:function(){
+  else if(lockState==="blocked")lockScreen = e(LockScreen,{lockInfo:lockInfo,onRetry:function(){
     checkLock(function(lock){
       var now=new Date();
       if(!lock||!lock.locked||new Date(lock.expires_at)<now){acquireLock(currentUser,function(){setLockState("owner");setLockInfo(null);});}
@@ -2011,6 +2013,9 @@ function MetroGest() {
         e("button",{className:"btn btn-danger",style:{opacity:confInput==="SUPPRIMER"?1:0.4,pointerEvents:confInput==="SUPPRIMER"?"auto":"none"},onClick:function(){conf.fn();setConfInput("");}},"Confirmer la suppression")))):null;
 
   var toastEl = toast ? e("div",{className:"toast"},toast) : null;
+
+  if(noUser)return null;
+  if(lockScreen)return lockScreen;
 
   // ═══ LAYOUT ═══
   var isEmbed=window.location.search.indexOf("embed=1")>=0;
